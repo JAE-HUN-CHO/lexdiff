@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,12 +20,26 @@ interface FavoritesPanelProps {
 export function FavoritesPanel({ onSelect }: FavoritesPanelProps) {
   const [favorites, setFavorites] = useState<Favorite[]>([])
   const [isExpanded, setIsExpanded] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const unsubscribe = favoritesStore.subscribe(setFavorites)
     setFavorites(favoritesStore.getFavorites())
     return unsubscribe
   }, [])
+
+  // Close when clicking outside of the panel header/content
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (!isExpanded) return
+      const el = containerRef.current
+      if (el && e.target instanceof Node && !el.contains(e.target)) {
+        setIsExpanded(false)
+      }
+    }
+    document.addEventListener("mousedown", handleOutside)
+    return () => document.removeEventListener("mousedown", handleOutside)
+  }, [isExpanded])
 
   const handleRemove = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -61,9 +75,25 @@ export function FavoritesPanel({ onSelect }: FavoritesPanelProps) {
   }
 
   return (
-    <Card className="p-4" id="favorites-panel">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+    <Card className="p-4" id="favorites-panel" ref={containerRef}>
+      <div
+        className="flex items-center justify-between mb-3 cursor-pointer select-none"
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            setIsExpanded((v) => !v)
+          }
+        }}
+        aria-expanded={isExpanded}
+      >
+        <div
+          className="flex items-center gap-2 cursor-pointer select-none"
+          title="즐겨찾기 펼치기"
+          onClick={() => setIsExpanded(true)}
+        >
           <Star className="h-4 w-4 text-[var(--color-warning)] fill-[var(--color-warning)]" />
           <h3 className="text-sm font-semibold text-foreground">즐겨찾기</h3>
           <Badge variant="secondary" className="text-xs">
@@ -73,7 +103,10 @@ export function FavoritesPanel({ onSelect }: FavoritesPanelProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsExpanded((v) => !v)
+          }}
           className="h-7 text-xs"
           data-expand={isExpanded}
         >

@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "restart": "scripts\\restart-dev.cmd"
   },
   "dependencies": {
     "@google/genai": "latest",
