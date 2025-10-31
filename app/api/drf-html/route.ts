@@ -4,6 +4,18 @@ import sanitizeHtml from "sanitize-html"
 import iconv from "iconv-lite"
 import { buildJO } from "@/lib/law-parser"
 
+function absUrl(href: string): string {
+  try {
+    if (!href) return ""
+    if (href.startsWith("http")) return href
+    if (href.startsWith("//")) return `https:${href}`
+    if (href.startsWith("/")) return `https://www.law.go.kr${href}`
+    return `https://www.law.go.kr/${href.replace(/^\./, "")}`
+  } catch {
+    return href
+  }
+}
+
 const DRF_BASE = "https://www.law.go.kr/DRF/lawService.do"
 const OC = process.env.LAW_OC || ""
 
@@ -51,12 +63,39 @@ function rewriteAnchors($: cheerio.CheerioAPI) {
     const a = $(el)
     const text = a.text().trim()
     const href = a.attr("href") || ""
+    const onclick = (a.attr("onclick") || "").toString()
     // Remove same-article paragraph/item anchors
     if (/제\s*\d+\s*항/.test(text) || /제\s*\d+\s*호/.test(text)) {
       a.replaceWith(text)
       return
     }
 
+    // 1) javascript: or onclick handlers that embed params
+    const jsLike = href.startsWith("javascript:") || onclick
+    if (jsLike) {
+      const src = `${href} ${onclick}`
+      const idMatch = src.match(/ID\s*=\s*([0-9]+)/i) || src.match(/"(\d{6,})"/)
+      const mstMatch = src.match(/MST\s*=\s*([0-9]+)/i)
+      const joMatch = src.match(/JO\s*=\s*(\d{6})/i) || src.match(/제\s*\d+\s*조(의\s*\d+)?/)
+      const efMatch = src.match(/efYd\s*=\s*(\d{8})/i)
+      const id = idMatch?.[1] || ""
+      const mst = mstMatch?.[1] || ""
+      let joCode = joMatch?.[1] || ""
+      if (!joCode && joMatch) {
+        try { joCode = buildJO(joMatch[0]) } catch {}
+      }
+      if (id || mst) {
+        a.attr("href", "#").addClass("law-drf-link")
+        if (id) a.attr("data-law-id", id)
+        if (mst) a.attr("data-mst", mst)
+        if (joCode) a.attr("data-jo", joCode)
+        if (efMatch?.[1]) a.attr("data-efyd", efMatch[1])
+        a.removeAttr("target").attr("rel", "noopener")
+        return
+      }
+    }
+
+    // 2) Normal href that points to DRF
     try {
       const u = new URL(href, DRF_BASE)
       if (u.pathname.includes("/DRF/lawService.do")) {
@@ -65,22 +104,22 @@ function rewriteAnchors($: cheerio.CheerioAPI) {
         const jo = u.searchParams.get("JO") || ""
         const efyd = u.searchParams.get("efYd") || ""
         if (id || mst) {
-          a.attr("href", "#")
-          a.attr("class", (a.attr("class") || "") + " law-drf-link")
+          a.attr("href", "#").addClass("law-drf-link")
           if (id) a.attr("data-law-id", id)
           if (mst) a.attr("data-mst", mst)
           if (jo) a.attr("data-jo", jo)
           if (efyd) a.attr("data-efyd", efyd)
-          a.removeAttr("target")
-          a.attr("rel", "noopener")
+          a.removeAttr("target").attr("rel", "noopener")
           return
         }
       }
-      // External link: keep as new tab
-      a.attr("target", "_blank")
-      a.attr("rel", "noopener noreferrer")
-    } catch {
-      // leave as-is
+    } catch {}
+
+    // 3) Fallback: keep external link but route through law-html proxy for modal
+    const abs = absUrl(href)
+    if (abs) {
+      a.attr("href", "#").addClass("law-html-link").attr("data-href", abs).attr("title", a.attr("title") || "연결된 본문 열기")
+      return
     }
   })
 }
