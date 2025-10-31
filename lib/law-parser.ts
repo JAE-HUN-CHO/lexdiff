@@ -1,0 +1,191 @@
+import { debugLogger } from "./debug-logger"
+import type { RevisionHistoryItem } from "./law-types"
+
+/**
+ * Converts Korean law article notation to 6-digit JO code
+ * Examples:
+ *   "38조" → "003800"
+ *   "10조의2" → "001002"
+ *   "제5조" → "000500"
+ */
+export function buildJO(input: string): string {
+  debugLogger.debug("JO 파싱 시작", { input })
+
+  // Remove "제" prefix if present
+  const cleaned = input.replace(/제/g, "").trim()
+
+  // Match patterns: "38조", "38조의2", "38"
+  const match = cleaned.match(/(\d+)(?:조)?(?:의(\d+))?/)
+
+  if (!match) {
+    debugLogger.error("조문 패턴 불일치", { input, cleaned })
+    throw new Error(`조문 패턴을 인식할 수 없습니다: ${input}`)
+  }
+
+  const articleNum = match[1].padStart(4, "0")
+  const branchNum = (match[2] ?? "0").padStart(2, "0")
+  const jo = `${articleNum}${branchNum}`
+
+  debugLogger.success("JO 파싱 완료", { input, jo })
+  return jo
+}
+
+/**
+ * Parses search query to extract law name and article
+ * Examples:
+ *   "관세법 38조" → { lawName: "관세법", article: "38조" }
+ *   "관세법 제38조" → { lawName: "관세법", article: "제38조" }
+ */
+export function parseSearchQuery(query: string): {
+  lawName: string
+  article?: string
+  jo?: string
+} {
+  debugLogger.debug("검색어 파싱 시작", { query })
+
+  const trimmed = query.trim()
+
+  // Pattern: "법령명 [제]N조[의N]"
+  const match = trimmed.match(/^(.+?)\s+(제?\d+조(?:의\d+)?)$/)
+
+  if (match) {
+    const lawName = match[1].trim()
+    const article = match[2].trim()
+    const jo = buildJO(article)
+
+    debugLogger.success("검색어 파싱 완료 (조문 포함)", { lawName, article, jo })
+    return { lawName, article, jo }
+  }
+
+  // No article specified, just law name
+  debugLogger.info("검색어 파싱 완료 (법령명만)", { lawName: trimmed })
+  return { lawName: trimmed }
+}
+
+/**
+ * Normalizes law article notation
+ * Examples:
+ *   "38조" → "제38조"
+ *   "10조의2" → "제10조의2"
+ */
+export function normalizeArticle(article: string): string {
+  const cleaned = article.replace(/제/g, "").trim()
+  return `제${cleaned}`
+}
+
+/**
+ * Formats JO code back to readable Korean
+ * Examples:
+ *   "003800" → "제38조"
+ *   "001002" → "제10조의2"
+ *   "38" → "제38조" (short format support)
+ */
+export function formatJO(jo: string): string {
+  if (!jo) return ""
+
+  // If already in "제N조" format, return as is
+  if (jo.startsWith("제") && jo.includes("조")) {
+    return jo
+  }
+
+  // Handle short format (e.g., "38")
+  if (jo.length < 6) {
+    const articleNum = Number.parseInt(jo, 10)
+    if (!isNaN(articleNum)) {
+      return `제${articleNum}조`
+    }
+    return jo
+  }
+
+  // Handle 6-digit format
+  if (jo.length === 6) {
+    const articleNum = Number.parseInt(jo.substring(0, 4), 10)
+    const branchNum = Number.parseInt(jo.substring(4, 6), 10)
+
+    if (branchNum === 0) {
+      return `제${articleNum}조`
+    }
+
+    return `제${articleNum}조의${branchNum}`
+  }
+
+  return jo
+}
+
+/**
+ * Parses article revision history XML response
+ */
+export function parseArticleHistory(xml: string): RevisionHistoryItem[] {
+  debugLogger.debug("조문 변경이력 파싱 시작")
+
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(xml, "text/xml")
+
+  // Check for parsing errors
+  const parserError = doc.querySelector("parsererror")
+  if (parserError) {
+    debugLogger.error("XML 파싱 오류", { error: parserError.textContent })
+    return []
+  }
+
+  const items = doc.querySelectorAll("law")
+  const history: RevisionHistoryItem[] = []
+
+  console.log("[v0] [조문이력] Found law items:", items.length)
+
+  items.forEach((item, index) => {
+    const lawInfo = item.querySelector("법령정보")
+    const articleInfo = item.querySelector("조문정보")
+
+    if (!lawInfo || !articleInfo) {
+      console.log(`[v0] [조문이력 ${index + 1}] Missing lawInfo or articleInfo, skipping`)
+      return
+    }
+
+    // Extract from 법령정보
+    const promulgationDate = lawInfo.querySelector("공포일자")?.textContent || ""
+    const promulgationNumber = lawInfo.querySelector("공포번호")?.textContent || ""
+    const revisionType = lawInfo.querySelector("제개정구분명")?.textContent || ""
+    const effectiveDate = lawInfo.querySelector("시행일자")?.textContent || ""
+    const department = lawInfo.querySelector("소관부처명")?.textContent || ""
+    const lawType = lawInfo.querySelector("법령구분명")?.textContent || ""
+
+    // Extract from 조문정보
+    const changeReason = articleInfo.querySelector("변경사유")?.textContent || ""
+    const articleLink = articleInfo.querySelector("조문링크")?.textContent || ""
+    const articleNumber = articleInfo.querySelector("조문번호")?.textContent || ""
+
+    // Format date as YYYY-MM-DD
+    const formatDate = (dateStr: string) => {
+      if (!dateStr || dateStr.length !== 8) return dateStr
+      return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`
+    }
+
+    const fullArticleLink = articleLink ? `https://www.law.go.kr${articleLink}` : ""
+
+    const historyItem: RevisionHistoryItem = {
+      date: formatDate(promulgationDate),
+      type: revisionType,
+      description: changeReason,
+      promulgationDate: formatDate(promulgationDate),
+      promulgationNumber,
+      effectiveDate: formatDate(effectiveDate),
+      department,
+      lawType,
+      changeReason,
+      articleLink: fullArticleLink,
+    }
+
+    history.push(historyItem)
+
+    console.log(`[v0] [조문이력 ${index + 1}]`, {
+      date: historyItem.date,
+      type: historyItem.type,
+      reason: historyItem.changeReason,
+      articleNumber,
+    })
+  })
+
+  debugLogger.success("조문 변경이력 파싱 완료", { count: history.length })
+  return history
+}

@@ -1,0 +1,187 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@font-face {
+  font-family: "GiantsInline";
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2307-1@1.1/Giants-Inline.woff2") format("woff2");
+  font-weight: normal;
+  font-display: swap;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(0.12 0.01 240);
+  --foreground: oklch(0.95 0.01 240);
+  --card: oklch(0.16 0.01 240);
+  --card-foreground: oklch(0.95 0.01 240);
+  --popover: oklch(0.14 0.01 240);
+  --popover-foreground: oklch(0.95 0.01 240);
+  --primary: oklch(0.55 0.18 250);
+  --primary-foreground: oklch(0.98 0.01 240);
+  --secondary: oklch(0.22 0.02 240);
+  --secondary-foreground: oklch(0.95 0.01 240);
+  --muted: oklch(0.2 0.02 240);
+  --muted-foreground: oklch(0.65 0.02 240);
+  --accent: oklch(0.65 0.2 250);
+  --accent-foreground: oklch(0.98 0.01 240);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 240);
+  --border: oklch(0.25 0.02 240);
+  --input: oklch(0.25 0.02 240);
+  --ring: oklch(0.55 0.18 250);
+  --chart-1: oklch(0.6 0.2 250);
+  --chart-2: oklch(0.65 0.18 200);
+  --chart-3: oklch(0.55 0.15 280);
+  --chart-4: oklch(0.7 0.16 150);
+  --chart-5: oklch(0.6 0.18 50);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.14 0.01 240);
+  --sidebar-foreground: oklch(0.95 0.01 240);
+  --sidebar-primary: oklch(0.55 0.18 250);
+  --sidebar-primary-foreground: oklch(0.98 0.01 240);
+  --sidebar-accent: oklch(0.22 0.02 240);
+  --sidebar-accent-foreground: oklch(0.95 0.01 240);
+  --sidebar-border: oklch(0.25 0.02 240);
+  --sidebar-ring: oklch(0.55 0.18 250);
+  --success: oklch(0.6 0.18 150);
+  --warning: oklch(0.7 0.18 80);
+  --info: oklch(0.65 0.18 230);
+  --debug-bg: oklch(0.1 0.01 240);
+  --debug-border: oklch(0.3 0.02 240);
+  --color-destructive-bg: oklch(0.3 0.18 25);
+  --color-destructive-fg: oklch(1 0.05 25);
+  --color-success-bg: oklch(0.3 0.15 150);
+  --color-success-fg: oklch(1 0.05 150);
+  --color-warning-bg: oklch(0.4 0.15 80);
+  --color-warning-fg: oklch(0.05 0.01 80);
+}
+
+.dark {
+  --background: oklch(0.12 0.01 240);
+  --foreground: oklch(0.95 0.01 240);
+  --card: oklch(0.16 0.01 240);
+  --card-foreground: oklch(0.95 0.01 240);
+  --popover: oklch(0.14 0.01 240);
+  --popover-foreground: oklch(0.95 0.01 240);
+  --primary: oklch(0.55 0.18 250);
+  --primary-foreground: oklch(0.98 0.01 240);
+  --secondary: oklch(0.22 0.02 240);
+  --secondary-foreground: oklch(0.95 0.01 240);
+  --muted: oklch(0.2 0.02 240);
+  --muted-foreground: oklch(0.65 0.02 240);
+  --accent: oklch(0.65 0.2 250);
+  --accent-foreground: oklch(0.98 0.01 240);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 240);
+  --border: oklch(0.25 0.02 240);
+  --input: oklch(0.25 0.02 240);
+  --ring: oklch(0.55 0.18 250);
+  --chart-1: oklch(0.6 0.2 250);
+  --chart-2: oklch(0.65 0.18 200);
+  --chart-3: oklch(0.55 0.15 280);
+  --chart-4: oklch(0.7 0.16 150);
+  --chart-5: oklch(0.6 0.18 50);
+  --sidebar: oklch(0.14 0.01 240);
+  --sidebar-foreground: oklch(0.95 0.01 240);
+  --sidebar-primary: oklch(0.55 0.18 250);
+  --sidebar-primary-foreground: oklch(0.98 0.01 240);
+  --sidebar-accent: oklch(0.22 0.02 240);
+  --sidebar-accent-foreground: oklch(0.95 0.01 240);
+  --sidebar-border: oklch(0.25 0.02 240);
+  --sidebar-ring: oklch(0.55 0.18 250);
+  --success: oklch(0.6 0.18 150);
+  --warning: oklch(0.7 0.18 80);
+  --info: oklch(0.65 0.18 230);
+  --debug-bg: oklch(0.1 0.01 240);
+  --debug-border: oklch(0.3 0.02 240);
+  --color-destructive-bg: oklch(0.3 0.18 25);
+  --color-destructive-fg: oklch(1 0.05 25);
+  --color-success-bg: oklch(0.3 0.15 150);
+  --color-success-fg: oklch(1 0.05 150);
+  --color-warning-bg: oklch(0.4 0.15 80);
+  --color-warning-fg: oklch(0.05 0.01 80);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-debug-bg: var(--debug-bg);
+  --color-debug-border: var(--debug-border);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  .rev-mark {
+    color: rgb(147, 197, 253) !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+  }
+
+  .prose .rev-mark {
+    color: rgb(147, 197, 253) !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(0.16 0.01 240);
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.35 0.02 240);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.45 0.02 240);
+}
