@@ -108,22 +108,10 @@ export function LawViewer({
   useEffect(() => {
     const load = async () => {
       if (!activeArticle) return
-      // Resolve lawId (prefer meta.lawId, fallback via search)
-      let lawId = meta.lawId
-      if (!lawId) {
-        try {
-          const r = await fetch(`/api/law-search?query=${encodeURIComponent(meta.lawTitle)}`)
-          const txt = await r.text()
-          lawId = txt.match(/<법령ID>([^<]+)<\/법령ID>/)?.[1] || undefined
-          if (lawId) setLawIdForHtml(lawId)
-        } catch {}
-      } else {
-        setLawIdForHtml(lawId)
-      }
-      if (!lawId) return
       setHtmlLoading(true)
       try {
-        const res = await fetch(`/api/drf-html?lawId=${encodeURIComponent(lawId)}&jo=${encodeURIComponent(activeArticle.jo)}`)
+        const joLabel = formatJO(activeArticle.jo)
+        const res = await fetch(`/api/law-html?lawName=${encodeURIComponent(meta.lawTitle)}&joLabel=${encodeURIComponent(joLabel)}`)
         const data = await res.json()
         setActiveHtml(data.html || "")
       } catch (e) {

@@ -113,11 +113,14 @@ function extractArticleRegionAfterAmend($: cheerio.CheerioAPI, jo?: string) {
   return out
 }
 
-function rewriteAnchors($: cheerio.CheerioAPI) {
+function rewriteAnchors(
+  $: cheerio.CheerioAPI,
+  ctx: { lawId?: string; lawTitle?: string } = {},
+) {
   $("a[href]").each((_, el) => {
     const a = $(el)
     const text = a.text().trim()
-    const href = a.attr("href") || ""
+    const href = (a.attr("href") || "").toString()
     const onclick = (a.attr("onclick") || "").toString()
     // Remove same-article paragraph/item anchors
     if (/제\s*\d+\s*항/.test(text) || /제\s*\d+\s*호/.test(text)) {
@@ -126,15 +129,15 @@ function rewriteAnchors($: cheerio.CheerioAPI) {
     }
 
     // 1) javascript: or onclick handlers that embed params
-    const jsLike = href.startsWith("javascript:") || onclick
+    const jsLike = /^javascript\s*:\s*;?$/i.test(href) || /#AJAX/i.test(href) || onclick.length > 0
     if (jsLike) {
       const src = `${href} ${onclick}`
-      const idMatch = src.match(/ID\s*=\s*([0-9]+)/i) || src.match(/"(\d{6,})"/)
+      const idMatch = src.match(/ID\s*=\s*(\d{4,})/i) || src.match(/\b(\d{6,})\b/)
       const mstMatch = src.match(/MST\s*=\s*([0-9]+)/i)
       const joMatch = src.match(/JO\s*=\s*(\d{6})/i) || src.match(/제\s*\d+\s*조(의\s*\d+)?/)
       const efMatch = src.match(/efYd\s*=\s*(\d{8})/i)
-      const id = idMatch?.[1] || ""
-      const mst = mstMatch?.[1] || ""
+      const id = idMatch?.[1]
+      const mst = mstMatch?.[1]
       let joCode = joMatch?.[1] || ""
       if (!joCode && joMatch) {
         try { joCode = buildJO(joMatch[0]) } catch {}
@@ -153,6 +156,25 @@ function rewriteAnchors($: cheerio.CheerioAPI) {
         if (efMatch?.[1]) a.attr("data-efyd", efMatch[1])
         a.attr("target", "_blank").attr("rel", "noopener")
         return
+      }
+      // Try to extract viewer-relative URL from the handler, e.g. '/법령/국세징수법/제12조' or '/LSW/lsInfoP.do?...'
+      const pathMatch = src.match(/['"](\/[^'"\s]+\.(?:do|jsp)(?:\?[^'"\s]*)?)['"]/i) || src.match(/['"](\/법령\/[^"]+)['"]/)
+      if (pathMatch && pathMatch[1]) {
+        const abs = `https://www.law.go.kr${pathMatch[1]}`
+        a.attr("href", abs).addClass("law-html-link").attr("data-href", abs)
+        a.attr("target", "_blank").attr("rel", "noopener noreferrer")
+        return
+      }
+      // Same-law ‘제n조’ without id → use current lawId
+      if (!id && !mst && ctx.lawId && /제\s*\d+\s*조/.test(text)) {
+        let sameJo = ""; try { sameJo = buildJO(text) } catch {}
+        if (sameJo) {
+          const sp = new URLSearchParams({ target: "eflaw", type: "HTML", ID: ctx.lawId, JO: sameJo })
+          const abs = `${DRF_BASE}?${sp.toString()}`
+          a.attr("href", abs).addClass("law-drf-link law-html-link").attr("data-href", abs).attr("data-jo", sameJo)
+          a.attr("target", "_blank").attr("rel", "noopener")
+          return
+        }
       }
     }
 
@@ -184,7 +206,7 @@ function rewriteAnchors($: cheerio.CheerioAPI) {
 
     // 3) Fallback: keep external link but route through law-html proxy for modal
     const abs = absUrl(href)
-    if (abs) {
+    if (abs && !/^https?:\/\/www\.law\.go\.kr\/javascript:;?$/i.test(abs) && !/#AJAX/i.test(abs)) {
       a.attr("href", abs).addClass("law-html-link").attr("data-href", abs).attr("title", a.attr("title") || "연결된 본문 열기").attr("target", "_blank").attr("rel", "noopener noreferrer")
       return
     }
@@ -236,7 +258,7 @@ export async function GET(req: Request) {
         }
         const _$ = load(fhtml)
         // First rewrite anchors on the whole doc, then slice the region so links persist
-        rewriteAnchors(_$)
+        rewriteAnchors(_$, { lawId })
         const region = extractArticleRegionAfterAmend(_$, joParam)
         bodyHtml = region.html() || _$("body").html() || _$.root().html() || fhtml
         console.log("[drf-html] frame content-type:", fctype, "len:", bodyHtml.length)
@@ -245,7 +267,7 @@ export async function GET(req: Request) {
       }
     } else {
       // Rewrite first, then extract region
-      rewriteAnchors($)
+      rewriteAnchors($, { lawId })
       const region = extractArticleRegionAfterAmend($, joParam)
       bodyHtml = region.html() || bodyHtml
     }
@@ -253,6 +275,10 @@ export async function GET(req: Request) {
     let collapsed = (bodyHtml || "").replace(/(?:<br\s*\/?>\s*){2,}/gi, '<br/>')
     collapsed = collapsed.replace(/^\s*(<br\s*\/?>\s*)+/i, '')
     collapsed = collapsed.replace(/(<br\s*\/?>\s*)+$/i, '')
+    // Highlight amendment marks
+    collapsed = collapsed
+      .replace(/\[(?:개정|전문개정|전부개정|신설|삭제)[^\]]*\]/g, '<span class="rev-mark">$&</span>')
+      .replace(/<\s*(?:개정|전문개정|전부개정|신설|삭제)[^>]*>/g, (m) => `<span class="rev-mark">${m.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>`)
     const safe = sanitizeKeepAnchors(collapsed)
     console.log("[drf-html] content-type:", ctype, "len:", bodyHtml.length, "sanitized:", safe.length)
     return NextResponse.json({ html: safe })

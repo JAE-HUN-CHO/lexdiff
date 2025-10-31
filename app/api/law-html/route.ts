@@ -6,7 +6,7 @@ import iconv from "iconv-lite"
 function absUrl(href: string): string {
   try {
     if (!href) return ""
-    if (href.startsWith("http")) return href
+    if (/^https?:/i.test(href)) return href
     if (href.startsWith("//")) return `https:${href}`
     if (href.startsWith("/")) return `https://www.law.go.kr${href}`
     return `https://www.law.go.kr/${href.replace(/^\./, "")}`
@@ -16,17 +16,7 @@ function absUrl(href: string): string {
 }
 
 function pickMainContainer($: cheerio.CheerioAPI) {
-  // Try a set of known containers; fallback to body
-  const candidates = [
-    "#conScroll",
-    "#conBody",
-    "#concontent",
-    ".con_box",
-    ".conbox",
-    ".view_wrap",
-    "#content",
-    "main",
-  ]
+  const candidates = ["#conScroll", "#contentBody", "#conBody", "#concontent", ".con_box", ".conbox", ".view_wrap", "#content", "main"]
   for (const sel of candidates) {
     const el = $(sel)
     if (el && el.length) return el.first()
@@ -37,38 +27,32 @@ function pickMainContainer($: cheerio.CheerioAPI) {
 function extractArticleHtml($: cheerio.CheerioAPI, joLabel?: string) {
   const root = pickMainContainer($)
   if (!joLabel) return root.html() || ""
-
-  // Find a node that contains the joLabel text
   const needle = joLabel.replace(/\s+/g, "")
   let start: cheerio.Cheerio | null = null
-  // Prefer headings or dl/dt first
   const searchSelectors = "h1, h2, h3, h4, dt, a, p, li, div, span"
   root.find(searchSelectors).each((_, el) => {
     const txt = $(el).text().replace(/\s+/g, "")
-    if (!start && txt.includes(needle)) {
-      start = $(el)
-      return false
-    }
+    if (!start && txt.includes(needle)) { start = $(el); return false }
   })
   if (!start) return root.html() || ""
 
-  // Expand to a reasonable container (e.g., parent li or div)
   let container = start.closest("li")
   if (!container.length) container = start.closest("dd")
   if (!container.length) container = start.closest("div")
   if (!container.length) container = start
 
-  // Collect until next article header-like node
   const nodes: string[] = []
   let cur: cheerio.Cheerio | null = container
-  const limit = 40 // safety cap
   let steps = 0
+  const limit = 60
   while (cur && cur.length && steps < limit) {
     nodes.push($.html(cur) || "")
     const next = cur.next()
     if (!next.length) break
+    const thisText = cur.text()
+    if (/\[(?:개정|전문개정|전부개정|신설|삭제)[^\]]*\]/.test(thisText) || /＜\s*(?:개정|전문개정|전부개정|신설|삭제)[^＞]*＞/.test(thisText)) break
     const t = next.text().trim()
-    if (/^제\s*\d+\s*조/.test(t)) break // next article
+    if (/^제\s*\d+\s*조/.test(t)) break
     cur = next
     steps++
   }
@@ -79,37 +63,35 @@ function sanitizeKeepAnchors(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: Array.from(new Set([
       ...sanitizeHtml.defaults.allowedTags,
-      "img",
-      "span",
-      "table",
-      "thead",
-      "tbody",
-      "tr",
-      "td",
-      "th",
-      "sup",
-      "sub",
-      "dl",
-      "dt",
-      "dd",
+      "img", "span", "table", "thead", "tbody", "tr", "td", "th", "sup", "sub", "dl", "dt", "dd",
     ])),
     allowedAttributes: {
-      a: ["href", "title", "class", "id", "data-href"],
+      a: ["href", "title", "class", "id", "data-href", "target", "rel"],
       img: ["src", "alt"],
-      '*': ["class", "id", "style"],
+      '*': ["class", "id"],
     },
-    transformTags: {
-      a: (tagName, attribs) => {
-        const href = absUrl(attribs.href || "")
-        return {
-          tagName: "a",
-          attribs: { class: "law-html-link", href: "#", "data-href": href, title: attribs.title || "" },
-        }
-      },
-    },
-    // Keep line breaks readable
-    textFilter: (text) => text,
   })
+}
+
+function rewriteAnchorsKeepHref(fragmentHtml: string): string {
+  const $ = load(fragmentHtml)
+  $("a").each((_, el) => {
+    const a = $(el)
+    let href = (a.attr("href") || "").toString()
+    const onclick = (a.attr("onclick") || "").toString()
+    if (/^javascript\s*:\s*;?$/i.test(href) || /#AJAX/i.test(href)) {
+      const mPath = onclick.match(/['"](\/[^'"\s]+\.(?:do|jsp)(?:\?[^'"\s]*)?)['"]/i) || onclick.match(/['"](\/법령\/[^"]+)['"]/)
+      if (mPath && mPath[1]) href = `https://www.law.go.kr${mPath[1]}`
+    }
+    const abs = absUrl(href)
+    if (abs) {
+      a.attr("href", abs)
+      a.addClass("law-html-link")
+      a.attr("data-href", abs)
+      a.attr("target", "_blank").attr("rel", "noopener noreferrer")
+    }
+  })
+  return $("body").html() || $.root().html() || fragmentHtml
 }
 
 export async function GET(req: Request) {
@@ -128,7 +110,6 @@ export async function GET(req: Request) {
       targetUrl = `https://www.law.go.kr/법령/${encodeURIComponent(lawName)}/${encodeURIComponent(joLabel)}`
     }
 
-    // Fetch viewer HTML
     const res = await fetch(targetUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
@@ -143,11 +124,16 @@ export async function GET(req: Request) {
       try { html = iconv.decode(buf, "euc-kr") } catch {}
     }
     const $ = load(html)
-    const raw = extractArticleHtml($, joLabel || undefined)
-    let sanitized = sanitizeKeepAnchors(raw)
-    // Fallback: if result looks too short, use whole container
+    let raw = extractArticleHtml($, joLabel || undefined)
+    raw = raw.replace(/(?:<br\s*\/?>\s*){2,}/gi, '<br/>').replace(/^\s*(<br\s*\/?>\s*)+/i, '').replace(/(<br\s*\/?>\s*)+$/i, '')
+    raw = raw
+      .replace(/\[(?:개정|전문개정|전부개정|신설|삭제)[^\]]*\]/g, '<span class="rev-mark">$&</span>')
+      .replace(/<\s*(?:개정|전문개정|전부개정|신설|삭제)[^>]*>/g, (m) => `<span class=\"rev-mark\">${m.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>`)
+    const withAnchors = rewriteAnchorsKeepHref(raw)
+    let sanitized = sanitizeKeepAnchors(withAnchors)
     if (!sanitized || sanitized.replace(/<[^>]+>/g, "").trim().length < 10) {
-      const all = pickMainContainer($).html() || ""
+      let all = pickMainContainer($).html() || ""
+      all = rewriteAnchorsKeepHref(all)
       sanitized = sanitizeKeepAnchors(all)
     }
     if (debug) {
@@ -161,3 +147,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "unknown" }, { status: 500 })
   }
 }
+
