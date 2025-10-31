@@ -4,6 +4,18 @@ import sanitizeHtml from "sanitize-html"
 import iconv from "iconv-lite"
 import { buildJO } from "@/lib/law-parser"
 
+function ensureOc(url: string, oc: string): string {
+  try {
+    const u = new URL(url, DRF_BASE)
+    if (u.pathname.includes("/DRF/lawService.do") && !u.searchParams.has("OC")) {
+      u.searchParams.set("OC", oc)
+    }
+    return u.toString()
+  } catch {
+    return url
+  }
+}
+
 function absUrl(href: string): string {
   try {
     if (!href) return ""
@@ -247,7 +259,7 @@ export async function GET(req: Request) {
     const iframeSrc = $("iframe[src], frame[src]").first().attr("src")
     if (iframeSrc) {
       try {
-        const abs = new URL(iframeSrc, DRF_BASE).toString()
+        const abs = ensureOc(new URL(iframeSrc, DRF_BASE).toString(), OC)
         console.log("[drf-html] following frame:", abs)
         const fr = await fetch(abs, { next: { revalidate: 1800 } })
         const fctype = fr.headers.get("content-type") || ""

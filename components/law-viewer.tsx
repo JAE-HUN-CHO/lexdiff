@@ -65,6 +65,8 @@ export function LawViewer({
   const USE_LAW_HTML = true
   const [activeHtml, setActiveHtml] = useState<string>("")
   const [htmlLoading, setHtmlLoading] = useState<boolean>(false)
+  const [htmlError, setHtmlError] = useState<boolean>(false)
+  const htmlCacheRef = useRef<Map<string, string>>(new Map())
   const [htmlLinks, setHtmlLinks] = useState<Array<{ text: string; href: string }>>([])
   const [lawIdForHtml, setLawIdForHtml] = useState<string | undefined>(undefined)
 
@@ -106,22 +108,49 @@ export function LawViewer({
 
   // Load official HTML for active article (Option A)
   useEffect(() => {
+    // Prefer cached HTML to prevent flicker
+    if (!activeArticle || isOrdinance || !USE_LAW_HTML) {
+      setHtmlLoading(false)
+      return
+    }
+
+    const cached = htmlCacheRef.current.get(activeArticle.jo)
+    if (cached) setActiveHtml(cached)
+
+    let aborted = false
     const load = async () => {
-      if (!activeArticle) return
-      setHtmlLoading(true)
+      setHtmlLoading(!cached)
+      setHtmlError(false)
       try {
-        const joLabel = formatJO(activeArticle.jo)
-        const res = await fetch(`/api/law-html?lawName=${encodeURIComponent(meta.lawTitle)}&joLabel=${encodeURIComponent(joLabel)}`)
+        // Resolve lawId first (prefer meta, fallback to search)
+        let lawId = (meta as any).lawId as string | undefined
+        if (!lawId) {
+          try {
+            const r = await fetch(`/api/law-search?query=${encodeURIComponent(meta.lawTitle)}`)
+            const txt = await r.text()
+            const m = txt.match(/<법령ID>([^<]+)<\/법령ID>/)
+            lawId = m?.[1]
+          } catch {}
+        }
+        const res = await fetch(`/api/drf-html?${new URLSearchParams({ lawId: lawId || '', jo: activeArticle.jo }).toString()}`)
         const data = await res.json()
-        setActiveHtml(data.html || "")
-      } catch (e) {
-        setActiveHtml("")
+        if (aborted) return
+        if (data && typeof data.html === 'string' && data.html.trim().length > 0) {
+          htmlCacheRef.current.set(activeArticle.jo, data.html)
+          setActiveHtml(data.html)
+        } else {
+          setHtmlError(true)
+        }
+      } catch {
+        if (aborted) return
+        setHtmlError(true)
       } finally {
-        setHtmlLoading(false)
+        if (!aborted) setHtmlLoading(false)
       }
     }
-    if (!isOrdinance && USE_LAW_HTML) load(); else { setActiveHtml(""); setHtmlLoading(false) }
-  }, [activeArticle, isOrdinance, meta.lawTitle, meta.lawId])
+    load()
+    return () => { aborted = true }
+  }, [activeArticle?.jo, isOrdinance, meta.lawTitle])
 
   // Fetch anchor list from law.go.kr and later inject into XML content
   useEffect(() => {
@@ -150,6 +179,48 @@ export function LawViewer({
     }
     return result
   }
+
+  // Anchor click delegation using closest('a') to avoid opening raw href
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    const onClick = async (event: Event) => {
+      const t = event.target as HTMLElement
+      const a = t?.closest?.('a') as HTMLAnchorElement | null
+      if (!a) return
+      event.preventDefault()
+      event.stopPropagation()
+      try {
+        if (a.classList.contains('law-html-link')) {
+          const raw = a.getAttribute('data-href') || a.getAttribute('href') || ''
+          if (!raw) return
+          const res = await fetch(`/api/law-html?url=${encodeURIComponent(raw)}`)
+          const data = await res.json()
+          setRefModal({ open: true, title: a.textContent || '연결된 본문', html: data.html })
+          return
+        }
+        if (a.classList.contains('law-drf-link')) {
+          const lawId = a.getAttribute('data-law-id') || (meta as any).lawId || ''
+          const mst = a.getAttribute('data-mst') || ''
+          const jo = a.getAttribute('data-jo') || ''
+          const efyd = a.getAttribute('data-efyd') || ''
+          const qs = new URLSearchParams()
+          if (lawId) qs.set('lawId', lawId)
+          if (mst && !lawId) qs.set('mst', mst)
+          if (jo) qs.set('jo', jo)
+          if (efyd) qs.set('efYd', efyd)
+          const res = await fetch(`/api/drf-html?${qs.toString()}`)
+          const data = await res.json()
+          setRefModal({ open: true, title: a.textContent || '연결된 본문', html: data.html })
+          return
+        }
+      } catch {
+        setRefModal({ open: true, title: a.textContent || '연결된 본문', html: '불러오지 못했습니다.' })
+      }
+    }
+    el.addEventListener('click', onClick)
+    return () => el.removeEventListener('click', onClick)
+  }, [activeArticle?.jo, meta.lawTitle])
 
   const handleArticleClick = (jo: string) => {
     console.log("[v0] 조문 클릭:", { jo, isOrdinance })
@@ -586,10 +657,12 @@ export function LawViewer({
                       wordBreak: "break-word",
                     }}
                     onClick={handleContentClick}
-                    dangerouslySetInnerHTML={{ __html: (USE_LAW_HTML ? (activeHtml || (htmlLoading ? "" : "")) : injectHtmlLinksToContent(extractArticleText(activeArticle))) }}
+                    dangerouslySetInnerHTML={{ __html: (USE_LAW_HTML
+                      ? (activeHtml || (htmlLoading ? '' : (htmlError ? injectHtmlLinksToContent(extractArticleText(activeArticle)) : '')))
+                      : injectHtmlLinksToContent(extractArticleText(activeArticle))) }}
                   />
                   {USE_LAW_HTML && htmlLoading && !activeHtml && (
-                    <div className="text-sm text-muted-foreground">로딩 중…</div>
+                    <div className="text-sm text-muted-foreground mt-2">로딩 중…</div>
                   )}
 
                   {activeArticle.revisionHistory && activeArticle.revisionHistory.length > 0 && (

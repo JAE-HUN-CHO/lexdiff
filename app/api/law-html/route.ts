@@ -110,6 +110,16 @@ export async function GET(req: Request) {
       targetUrl = `https://www.law.go.kr/법령/${encodeURIComponent(lawName)}/${encodeURIComponent(joLabel)}`
     }
 
+    // If the incoming URL is a DRF endpoint, ensure OC is present
+    try {
+      const LAW_OC = process.env.LAW_OC || ""
+      const u = new URL(targetUrl, "https://www.law.go.kr")
+      if (u.pathname.includes("/DRF/lawService.do") && LAW_OC && !u.searchParams.has("OC")) {
+        u.searchParams.set("OC", LAW_OC)
+        targetUrl = u.toString()
+      }
+    } catch {}
+
     const res = await fetch(targetUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
@@ -131,10 +141,17 @@ export async function GET(req: Request) {
       .replace(/<\s*(?:개정|전문개정|전부개정|신설|삭제)[^>]*>/g, (m) => `<span class=\"rev-mark\">${m.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>`)
     const withAnchors = rewriteAnchorsKeepHref(raw)
     let sanitized = sanitizeKeepAnchors(withAnchors)
-    if (!sanitized || sanitized.replace(/<[^>]+>/g, "").trim().length < 10) {
+    // Robust fallbacks
+    const trimmedLen = sanitized.replace(/<[^>]+>/g, "").trim().length
+    if (trimmedLen < 10) {
       let all = pickMainContainer($).html() || ""
       all = rewriteAnchorsKeepHref(all)
       sanitized = sanitizeKeepAnchors(all)
+    }
+    // If still too short, fallback to whole document
+    if (sanitized.replace(/<[^>]+>/g, "").trim().length < 10) {
+      let whole = rewriteAnchorsKeepHref(html)
+      sanitized = sanitizeKeepAnchors(whole)
     }
     if (debug) {
       console.log("[law-html] url:", targetUrl)
@@ -147,4 +164,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "unknown" }, { status: 500 })
   }
 }
-
