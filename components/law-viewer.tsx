@@ -61,6 +61,8 @@ export function LawViewer({
   const contentRef = useRef<HTMLDivElement>(null)
   const [refModal, setRefModal] = useState<{ open: boolean; title?: string; html?: string }>({ open: false })
   const [lastExternalRef, setLastExternalRef] = useState<{ lawName: string; joLabel?: string } | null>(null)
+  // Option A (HTML mode) is disabled; keep states for potential reuse
+  const USE_LAW_HTML = false
   const [activeHtml, setActiveHtml] = useState<string>("")
   const [htmlLoading, setHtmlLoading] = useState<boolean>(false)
 
@@ -102,21 +104,9 @@ export function LawViewer({
 
   // Load official HTML for active article (Option A)
   useEffect(() => {
-    const load = async () => {
-      if (!activeArticle) return
-      setHtmlLoading(true)
-      try {
-        const joLabel = formatJO(activeArticle.jo)
-        const res = await fetch(`/api/law-html?lawName=${encodeURIComponent(meta.lawTitle)}&joLabel=${encodeURIComponent(joLabel)}`)
-        const data = await res.json()
-        setActiveHtml(data.html || "")
-      } catch (e) {
-        setActiveHtml("")
-      } finally {
-        setHtmlLoading(false)
-      }
-    }
-    if (!isOrdinance) load()
+    // HTML mode disabled
+    setActiveHtml("")
+    setHtmlLoading(false)
   }, [activeArticle, isOrdinance, meta.lawTitle])
 
   const handleArticleClick = (jo: string) => {
@@ -180,19 +170,7 @@ export function LawViewer({
     const target = e.target as HTMLElement
     if (target && target.tagName === "A") {
       e.preventDefault()
-      // HTML-mode anchors from law.go.kr
-      if (target.classList.contains("law-html-link")) {
-        const raw = target.getAttribute("data-href") || ""
-        if (!raw) return
-        try {
-          const res = await fetch(`/api/law-html?url=${encodeURIComponent(raw)}`)
-          const data = await res.json()
-          setRefModal({ open: true, title: target.textContent || "연결된 본문", html: data.html })
-        } catch {
-          setRefModal({ open: true, title: target.textContent || "연결된 본문", html: "불러오지 못했습니다." })
-        }
-        return
-      }
+      // HTML-mode anchors removed (A안 비활성화)
 
       const refType = target.getAttribute("data-ref")
       if (refType === "article") {
@@ -233,6 +211,11 @@ export function LawViewer({
           setRefModal({ open: true, title: lawName, html: `<a href=\"https://www.law.go.kr/법령/${encodeURIComponent(lawName)}\" target=\"_blank\" rel=\"noopener\">법령 페이지 열기</a>` })
           setLastExternalRef({ lawName })
         }
+      } else if (refType === "law-article") {
+        const lawName = target.getAttribute("data-law") || ""
+        const articleLabel = target.getAttribute("data-article") || ""
+        await openExternalLawArticleModal(lawName, articleLabel)
+        setLastExternalRef({ lawName, joLabel: articleLabel })
       } else if (refType === "same") {
         // Use last external reference law + current article, change to requested part
         if (lastExternalRef && lastExternalRef.joLabel) {
@@ -530,7 +513,7 @@ export function LawViewer({
                       wordBreak: "break-word",
                     }}
                     onClick={handleContentClick}
-                    dangerouslySetInnerHTML={{ __html: (activeHtml && activeHtml.replace(/<[^>]+>/g, "").trim().length > 10) ? activeHtml : (htmlLoading ? "<div>로딩 중...</div>" : extractArticleText(activeArticle)) }}
+                    dangerouslySetInnerHTML={{ __html: extractArticleText(activeArticle) }}
                   />
 
                   {activeArticle.revisionHistory && activeArticle.revisionHistory.length > 0 && (

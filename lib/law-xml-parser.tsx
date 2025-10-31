@@ -314,7 +314,7 @@ export function extractArticleText(article: LawArticle): string {
   if (article.content) {
     let content = escapeHtml(article.content)
     content = applyRevisionStyling(content)
-    content = linkifyReferences(content)
+    content = linkifyRefsB(content)
     text += `${content}\n`
   }
 
@@ -325,7 +325,7 @@ export function extractArticleText(article: LawArticle): string {
 
       const startsWithNumber = paraContent.trim().match(/^([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]|\d+\.)/)
 
-      const styledParaContent = linkifyReferences(applyRevisionStyling(escapeHtml(paraContent)))
+      const styledParaContent = linkifyRefsB(applyRevisionStyling(escapeHtml(paraContent)))
 
       if (startsWithNumber) {
         text += `\n${styledParaContent}\n`
@@ -342,7 +342,7 @@ export function extractArticleText(article: LawArticle): string {
 
           const startsWithNumber = itemContent.trim().match(/^([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]|\d+\.)/)
 
-          const styledItemContent = linkifyReferences(applyRevisionStyling(escapeHtml(itemContent)))
+          const styledItemContent = linkifyRefsB(applyRevisionStyling(escapeHtml(itemContent)))
 
           if (startsWithNumber) {
             text += `  ${styledItemContent}\n`
@@ -384,6 +384,38 @@ function applyRevisionStyling(text: string): string {
   )
 
   return styled
+}
+
+// B-mode linkifier: implements user rules for references
+function linkifyRefsB(text: string): string {
+  let t = text
+  // Regulatory keywords → related lookups
+  t = t.replace(/(대통령령|시행령)/g, (m) => `<a href="#" class="law-ref" data-ref="related" data-kind="decree">${m}</a>`)
+  t = t.replace(/((?:[가-힣A-Za-z·]+)?부령|시행규칙)/g, (m) => `<a href="#" class="law-ref" data-ref="related" data-kind="rule">${m}</a>`)
+
+  // Same-law articles
+  t = t.replace(/제\s*([0-9]{1,4})\s*조(의\s*([0-9]{1,2}))?/g, (m) => {
+    const label = m
+    const data = m.replace(/\s+/g, "")
+    return `<a href=\"#\" class=\"law-ref\" data-ref=\"article\" data-article=\"${data}\">${label}</a>`
+  })
+
+  // Do not link 제n항/제n호 (no-op)
+
+  // External law with brackets
+  t = t.replace(/「\s*([가-힣A-Za-z\d·]+법)\s*」\s*제\s*(\d+)\s*조(의\s*(\d+))?/g, (_m, lawName, art, _p2, branch) => {
+    const joLabel = `제${art}조` + (branch ? `의${branch}` : "")
+    const label = `「${lawName}」 ${joLabel}`
+    return `<a href=\"#\" class=\"law-ref\" data-ref=\"law-article\" data-law=\"${lawName}\" data-article=\"${joLabel}\">${label}</a>`
+  })
+
+  // External law without brackets
+  t = t.replace(/([가-힣A-Za-z\d·]+법)\s*제\s*(\d+)\s*조(의\s*(\d+))?/g, (match, lawName, art, _p2, branch) => {
+    const joLabel = `제${art}조` + (branch ? `의${branch}` : "")
+    return `<a href=\"#\" class=\"law-ref\" data-ref=\"law-article\" data-law=\"${lawName}\" data-article=\"${joLabel}\">${match}</a>`
+  })
+
+  return t
 }
 
 // Turn Korean law references into clickable anchors for modal previews
