@@ -239,11 +239,13 @@ export function LawViewer({
       }
       if (target.classList.contains("law-drf-link")) {
         const lawId = target.getAttribute("data-law-id") || meta.lawId || ""
+        const mst = target.getAttribute("data-mst") || ""
         const jo = target.getAttribute("data-jo") || ""
         const efyd = target.getAttribute("data-efyd") || ""
         try {
           const qs = new URLSearchParams()
           if (lawId) qs.set("lawId", lawId)
+          if (mst && !lawId) qs.set("mst", mst)
           if (jo) qs.set("jo", jo)
           if (efyd) qs.set("efYd", efyd)
           const res = await fetch(`/api/drf-html?${qs.toString()}`)

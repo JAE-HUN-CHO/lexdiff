@@ -34,6 +34,9 @@ function sanitizeKeepAnchors(html: string): string {
         "sup",
         "sub",
         "br",
+        "dl",
+        "dt",
+        "dd",
       ]),
     ),
     allowedAttributes: {
@@ -65,7 +68,7 @@ function rewriteAnchors($: cheerio.CheerioAPI) {
           a.attr("href", "#")
           a.attr("class", (a.attr("class") || "") + " law-drf-link")
           if (id) a.attr("data-law-id", id)
-          if (mst) a.attr("data-law-id", mst) // treat MST as id for our proxy
+          if (mst) a.attr("data-mst", mst)
           if (jo) a.attr("data-jo", jo)
           if (efyd) a.attr("data-efyd", efyd)
           a.removeAttr("target")
@@ -84,7 +87,8 @@ function rewriteAnchors($: cheerio.CheerioAPI) {
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
-  const lawId = searchParams.get("lawId") || searchParams.get("mst") || ""
+  const lawId = searchParams.get("lawId") || ""
+  const mstParam = searchParams.get("mst") || ""
   const jo = searchParams.get("jo") || ""
   const efYd = searchParams.get("efYd") || ""
   if (!OC) return NextResponse.json({ error: "LAW_OC is required" }, { status: 500 })
@@ -99,8 +103,9 @@ export async function GET(req: Request) {
         try { joParam = buildJO(jo) } catch { joParam = undefined }
       }
     }
-    const sp = buildParams({ target: "eflaw", type: "HTML", OC, ID: lawId, JO: joParam, efYd: efYd || undefined })
+    const sp = buildParams({ target: "eflaw", type: "HTML", OC, ID: lawId || undefined, MST: mstParam || undefined, JO: joParam, efYd: efYd || undefined })
     const url = `${DRF_BASE}?${sp.toString()}`
+    console.log("[drf-html] fetch:", url)
     const res = await fetch(url, { next: { revalidate: 1800 } })
     const ctype = res.headers.get("content-type") || ""
     const buf = Buffer.from(await res.arrayBuffer())
@@ -111,7 +116,9 @@ export async function GET(req: Request) {
     const $ = load(html)
     rewriteAnchors($)
     const bodyHtml = $("body").html() || $.root().html() || html
+    console.log("[drf-html] content-type:", ctype, "len:", bodyHtml.length)
     const safe = sanitizeKeepAnchors(bodyHtml)
+    console.log("[drf-html] sanitized len:", safe.length)
     return NextResponse.json({ html: safe })
   } catch (e) {
     console.error("[drf-html] error", e)
