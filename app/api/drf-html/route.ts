@@ -114,11 +114,32 @@ export async function GET(req: Request) {
       try { html = iconv.decode(buf, "euc-kr") } catch {}
     }
     const $ = load(html)
-    rewriteAnchors($)
-    const bodyHtml = $("body").html() || $.root().html() || html
-    console.log("[drf-html] content-type:", ctype, "len:", bodyHtml.length)
+    // Some DRF HTML responses embed content in an iframe; follow it
+    let bodyHtml = $("body").html() || $.root().html() || html
+    const iframeSrc = $("iframe[src], frame[src]").first().attr("src")
+    if (iframeSrc) {
+      try {
+        const abs = new URL(iframeSrc, DRF_BASE).toString()
+        console.log("[drf-html] following frame:", abs)
+        const fr = await fetch(abs, { next: { revalidate: 1800 } })
+        const fctype = fr.headers.get("content-type") || ""
+        const fbuf = Buffer.from(await fr.arrayBuffer())
+        let fhtml = fbuf.toString("utf8")
+        if (/euc-kr|ks_c_5601|ms949/i.test(fctype) || /charset=(euc-kr|ks_c_5601|ms949)/i.test(fhtml)) {
+          try { fhtml = iconv.decode(fbuf, "euc-kr") } catch {}
+        }
+        const _$ = load(fhtml)
+        rewriteAnchors(_$)
+        bodyHtml = _$("body").html() || _$.root().html() || fhtml
+        console.log("[drf-html] frame content-type:", fctype, "len:", bodyHtml.length)
+      } catch (frameErr) {
+        console.log("[drf-html] frame fetch failed", frameErr)
+      }
+    } else {
+      rewriteAnchors($)
+    }
     const safe = sanitizeKeepAnchors(bodyHtml)
-    console.log("[drf-html] sanitized len:", safe.length)
+    console.log("[drf-html] content-type:", ctype, "len:", bodyHtml.length, "sanitized:", safe.length)
     return NextResponse.json({ html: safe })
   } catch (e) {
     console.error("[drf-html] error", e)
