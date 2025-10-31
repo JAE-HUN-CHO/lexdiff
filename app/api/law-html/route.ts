@@ -18,6 +18,8 @@ function pickMainContainer($: cheerio.CheerioAPI) {
   // Try a set of known containers; fallback to body
   const candidates = [
     "#conScroll",
+    "#conBody",
+    "#concontent",
     ".con_box",
     ".conbox",
     ".view_wrap",
@@ -38,7 +40,9 @@ function extractArticleHtml($: cheerio.CheerioAPI, joLabel?: string) {
   // Find a node that contains the joLabel text
   const needle = joLabel.replace(/\s+/g, "")
   let start: cheerio.Cheerio | null = null
-  root.find("a, h2, h3, h4, p, li, div, span").each((_, el) => {
+  // Prefer headings or dl/dt first
+  const searchSelectors = "h1, h2, h3, h4, dt, a, p, li, div, span"
+  root.find(searchSelectors).each((_, el) => {
     const txt = $(el).text().replace(/\s+/g, "")
     if (!start && txt.includes(needle)) {
       start = $(el)
@@ -49,6 +53,7 @@ function extractArticleHtml($: cheerio.CheerioAPI, joLabel?: string) {
 
   // Expand to a reasonable container (e.g., parent li or div)
   let container = start.closest("li")
+  if (!container.length) container = start.closest("dd")
   if (!container.length) container = start.closest("div")
   if (!container.length) container = start
 
@@ -71,7 +76,8 @@ function extractArticleHtml($: cheerio.CheerioAPI, joLabel?: string) {
 
 function sanitizeKeepAnchors(html: string): string {
   return sanitizeHtml(html, {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    allowedTags: Array.from(new Set([
+      ...sanitizeHtml.defaults.allowedTags,
       "img",
       "span",
       "table",
@@ -82,7 +88,10 @@ function sanitizeKeepAnchors(html: string): string {
       "th",
       "sup",
       "sub",
-    ]),
+      "dl",
+      "dt",
+      "dd",
+    ])),
     allowedAttributes: {
       a: ["href", "title", "class", "id", "data-href"],
       img: ["src", "alt"],
@@ -107,6 +116,7 @@ export async function GET(req: Request) {
   const urlParam = searchParams.get("url") || ""
   const lawName = searchParams.get("lawName") || ""
   const joLabel = searchParams.get("joLabel") || ""
+  const debug = searchParams.get("debug") === "1"
 
   try {
     let targetUrl = urlParam
@@ -128,10 +138,20 @@ export async function GET(req: Request) {
     const html = await res.text()
     const $ = load(html)
     const raw = extractArticleHtml($, joLabel || undefined)
-    const sanitized = sanitizeKeepAnchors(raw)
+    let sanitized = sanitizeKeepAnchors(raw)
+    // Fallback: if result looks too short, use whole container
+    if (!sanitized || sanitized.replace(/<[^>]+>/g, "").trim().length < 10) {
+      const all = pickMainContainer($).html() || ""
+      sanitized = sanitizeKeepAnchors(all)
+    }
+    if (debug) {
+      console.log("[law-html] url:", targetUrl)
+      console.log("[law-html] joLabel:", joLabel)
+      console.log("[law-html] sanitized length:", sanitized.length)
+    }
     return NextResponse.json({ html: sanitized })
   } catch (e) {
+    console.error("[law-html] error:", e)
     return NextResponse.json({ error: e instanceof Error ? e.message : "unknown" }, { status: 500 })
   }
 }
-

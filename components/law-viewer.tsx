@@ -530,7 +530,7 @@ export function LawViewer({
                       wordBreak: "break-word",
                     }}
                     onClick={handleContentClick}
-                    dangerouslySetInnerHTML={{ __html: activeHtml || (htmlLoading ? "<div>로딩 중...</div>" : extractArticleText(activeArticle)) }}
+                    dangerouslySetInnerHTML={{ __html: (activeHtml && activeHtml.replace(/<[^>]+>/g, "").trim().length > 10) ? activeHtml : (htmlLoading ? "<div>로딩 중...</div>" : extractArticleText(activeArticle)) }}
                   />
 
                   {activeArticle.revisionHistory && activeArticle.revisionHistory.length > 0 && (
