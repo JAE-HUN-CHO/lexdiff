@@ -48,3 +48,4 @@ NUL
 
 # RAGAS evaluation results
 /evaluation/results/
+.env*.local

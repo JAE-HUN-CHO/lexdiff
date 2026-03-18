@@ -10,7 +10,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-export const CLAUDE_MODEL = 'claude-sonnet-4-6-20250514'
+export const CLAUDE_MODEL = 'claude-sonnet-4-6'
 
 const AUTH_PROFILES_PATH = join(
   process.env.HOME || process.env.USERPROFILE || '',

@@ -134,7 +134,8 @@ export function classifySearchQuery(query: string): UnifiedQueryClassification {
       confidence = 0.7
       reason = '법령 + 조문 추정'
       matchedPatterns.push('law')
-    } else if (legalQuestion.confidence >= 0.7) {
+    } else if (basicDetection.type === 'natural' && legalQuestion.confidence >= 0.7) {
+      // basicDetection이 natural일 때만 AI — structured인데 토픽 키워드만 있는 건 법령 검색
       searchType = 'ai'
       confidence = legalQuestion.confidence
       reason = '자연어 질문 추정'
