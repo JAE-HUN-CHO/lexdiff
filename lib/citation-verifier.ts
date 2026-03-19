@@ -274,11 +274,12 @@ async function checkArticleExists(
       // 조문이 아닌 경우 스킵 (예: 편, 장, 절 등)
       if (unit.조문여부 !== '조문') return false
 
-      // ✅ 조문번호를 buildJO() 형식으로 변환 (4+2 형식)
-      // 예: "61" → "006100" (article 4자리 + branch 2자리)
-      const articleNum = unit.조문번호 || '0'
-      const mainNum = Number(articleNum)
-      const articleJoCode = mainNum.toString().padStart(4, '0') + '00' // branch는 항상 00
+      // 조문번호 + 조문가지번호를 JO Code로 변환 (4+2 형식)
+      // 예: 조문번호 "61", 가지번호 "0" → "006100"
+      // 예: 조문번호 "38", 가지번호 "2" → "003802"
+      const mainNum = Number(unit.조문번호 || '0')
+      const branchNum = Number(unit.조문가지번호 || '0')
+      const articleJoCode = mainNum.toString().padStart(4, '0') + branchNum.toString().padStart(2, '0')
 
       // JO Code 비교
       if (articleJoCode === targetJoCode) {
