@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog"
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Icon } from "@/components/ui/icon"
@@ -194,7 +196,9 @@ export function DelegationGapModal({ isOpen, onClose, meta }: DelegationGapModal
       <DialogContent
         showCloseButton={false}
         className="w-full max-w-[100vw] sm:max-w-[750px] h-[75vh] p-0 flex flex-col border-primary/20 shadow-2xl shadow-primary/10"
+        aria-describedby={undefined}
       >
+        <VisuallyHidden.Root><DialogTitle>위임입법 미비 탐지</DialogTitle></VisuallyHidden.Root>
         {/* ── Header ── */}
         <div className="border-b border-border bg-muted/30 px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 min-w-0">

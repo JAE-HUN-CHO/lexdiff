@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Icon } from "@/components/ui/icon"
@@ -78,7 +79,9 @@ export function LawSelectionDialog({
       <DialogContent
         showCloseButton={false}
         className="sm:max-w-[480px] p-0 gap-0 flex flex-col max-h-[70vh]"
+        aria-describedby={undefined}
       >
+        <VisuallyHidden.Root><DialogTitle>{title}</DialogTitle></VisuallyHidden.Root>
         {/* 헤더 */}
         <div className="border-b border-border bg-muted/30 px-4 py-3 flex items-center justify-between shrink-0">
           <div>

@@ -176,6 +176,81 @@ export function OrdinanceBenchmarkView({ initialKeyword, onBack, onHomeClick }: 
     }
   }, [])
 
+  // ── 모달 내 법령 링크 클릭 핸들러 ──
+  const handleModalContentClick = useCallback(async (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement
+    if (!target || target.tagName !== 'A') return
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    const refType = target.getAttribute('data-ref')
+    if (!refType) return
+
+    // 별표 링크
+    if (refType === 'annex') {
+      const annexNum = target.getAttribute('data-annex') || ''
+      const lawName = target.getAttribute('data-law') || ''
+      setAnnexState({ open: true, annexNumber: annexNum, lawName, lawId: '' })
+      return
+    }
+
+    // 법령 조문 링크 (law-article, law, regulation 등)
+    const lawName = target.getAttribute('data-law')
+    const articleLabel = target.getAttribute('data-article') || ''
+    if (!lawName) return
+
+    const cleanedName = lawName.replace(/[「」『』]/g, '').trim()
+    setModalTitle(`${cleanedName} ${articleLabel}`.trim())
+    setModalLoading(true)
+    setModalHtml(undefined)
+
+    try {
+      // 법령 검색 → lawId 확보
+      const searchRes = await fetch(`/api/law-search?query=${encodeURIComponent(cleanedName)}&display=1`)
+      if (!searchRes.ok) throw new Error('검색 실패')
+      const searchXml = await searchRes.text()
+      const lawIdMatch = searchXml.match(/<법령ID>(\d+)<\/법령ID>/)
+      const mstMatch = searchXml.match(/<법령일련번호>(\d+)<\/법령일련번호>/)
+
+      if (!lawIdMatch && !mstMatch) {
+        setModalHtml(`<p>「${cleanedName}」을(를) 찾을 수 없습니다.</p>`)
+        return
+      }
+
+      // eflaw 조회
+      const lawId = lawIdMatch?.[1]
+      const mst = mstMatch?.[1]
+      const joCode = articleLabel.match(/제?(\d+)조/) ? articleLabel.replace(/[^\d]/g, '').padStart(6, '0').slice(0, 6) : ''
+      const eflawParams = new URLSearchParams()
+      if (lawId) eflawParams.set('lawId', lawId)
+      else if (mst) eflawParams.set('mst', mst)
+      if (joCode) eflawParams.set('jo', joCode)
+
+      const eflawRes = await fetch(`/api/eflaw?${eflawParams}`)
+      if (!eflawRes.ok) throw new Error('법령 조회 실패')
+      const eflawData = await eflawRes.json()
+      const { parseLawJSON } = await import('@/lib/law-json-parser')
+      const parsed = parseLawJSON(eflawData)
+
+      if (parsed.articles.length === 0) {
+        setModalHtml('<p class="text-center py-8 text-muted-foreground">조문 데이터가 없습니다.</p>')
+      } else {
+        const html = parsed.articles.map(a => {
+          const titlePart = a.title ? ` (${a.title})` : ''
+          const header = `<div class="font-semibold text-primary mb-1">${a.joNum}${titlePart}</div>`
+          const content = extractArticleText(a as any, true, cleanedName)
+          return `<div class="mb-4 pb-4 border-b border-border/30 last:border-0">${header}<div class="text-sm leading-relaxed">${content}</div></div>`
+        }).join('')
+        setModalHtml(`<div class="space-y-2">${html}</div>`)
+      }
+    } catch {
+      setModalHtml(`<p class="text-center py-8 text-muted-foreground">법령 조회 중 오류가 발생했습니다.</p>`)
+    } finally {
+      setModalLoading(false)
+    }
+  }, [])
+
   // ── AI 비교 분석 ──
   const checkedResults = useMemo(() =>
     Array.from(checkedItems).map(k => displayResults[parseInt(k)]).filter(Boolean),
@@ -577,7 +652,8 @@ export function OrdinanceBenchmarkView({ initialKeyword, onBack, onHomeClick }: 
       </div>
 
       <ReferenceModal isOpen={modalOpen} onClose={() => setModalOpen(false)}
-        title={modalTitle} html={modalHtml} loading={modalLoading} />
+        title={modalTitle} html={modalHtml} loading={modalLoading}
+        onContentClick={handleModalContentClick} />
       <AnnexModal
         isOpen={annexState.open}
         onClose={() => setAnnexState(s => ({ ...s, open: false }))}

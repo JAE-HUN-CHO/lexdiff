@@ -92,6 +92,11 @@ function extractContentFromHangArray(hangArray: any[]): string {
  */
 export function parseLawJSON(jsonData: any): LawData {
   try {
+    // API 에러 응답 체크 (eflaw가 { error: "..." } 반환하는 경우)
+    if (jsonData?.error) {
+      throw new Error(jsonData.error)
+    }
+
     const lawData = jsonData.법령
 
     if (!lawData) {

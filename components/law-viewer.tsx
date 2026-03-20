@@ -723,7 +723,7 @@ function LawViewerComponent({
         }
         break
       case 'annexes':
-        if (meta?.lawTitle) openAnnexModal({ lawName: meta.lawTitle, lawId: meta.lawId })
+        if (meta?.lawTitle) openAnnexModal('', meta.lawTitle, meta.lawId)
         break
       case 'precedents':
         setShowPrecedents(true)
