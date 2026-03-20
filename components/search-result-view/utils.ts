@@ -113,13 +113,22 @@ export function hasLawKeyword(query: string): boolean {
 
 export function hasOrdinanceKeyword(query: string): boolean {
   // "조레"는 "조례"의 흔한 오타
-  return /조례|조레|자치법규/.test(query) || (/규칙/.test(query) && !/시행규칙/.test(query))
+  // 주의: "규칙" 단독은 행정규칙일 수 있으므로 조례 판별에서 제외
+  return /조례|조레|자치법규/.test(query)
+}
+
+export function hasAdminRuleKeyword(query: string): boolean {
+  // 시행규칙은 법령이므로 제외
+  if (/시행규칙/.test(query)) return false
+  return /훈령|예규|고시|지침/.test(query)
 }
 
 import { containsLocalGovName } from '@/src/domain/patterns/OrdinancePattern'
 export { containsLocalGovName }
 
 export function isOrdinanceQuery(query: string): boolean {
+  // 행정규칙 키워드가 있으면 조례가 아님
+  if (hasAdminRuleKeyword(query)) return false
   // 명시적 조례 키워드
   if (hasOrdinanceKeyword(query) && !hasLawKeyword(query)) return true
   // 지역명 포함 + 법령 키워드 없음 → 조례 가능성

@@ -23,11 +23,14 @@ export const QUESTION_ENDINGS = /[?？]$|인가요?$|인지요?$|될까요?$|되
 // 질문 의문사 패턴
 export const QUESTION_WORDS = /(무엇|어떻게|어떤|왜|언제|어디서|누가|어느|뭐|뭘)/
 
-// 순수 법령명 패턴
-export const PURE_LAW_NAME_PATTERN = /^[가-힣A-Za-z0-9·\s]+(?:법률\s*시행령|법률\s*시행규칙|법\s*시행령|법\s*시행규칙|특별법|기본법|법률|법|령|규칙|규정|조례|지침|고시|훈령|예규)$/
+// 순수 법령명 패턴 (고시/훈령/예규/지침은 행정규칙이므로 제외)
+export const PURE_LAW_NAME_PATTERN = /^[가-힣A-Za-z0-9·\s]+(?:법률\s*시행령|법률\s*시행규칙|법\s*시행령|법\s*시행규칙|특별법|기본법|법률|법|령|규칙|규정|조례|약관|협정)$/
+
+// 행정규칙명 패턴 (고시/훈령/예규/지침)
+export const ADMIN_RULE_NAME_PATTERN = /^[가-힣A-Za-z0-9·\s]+(?:고시|훈령|예규|지침)$/
 
 // 일반 단어 제외 목록 (법령명으로 오인되기 쉬운 단어)
-export const EXCLUDED_WORDS = ['방법', '절차', '요건', '조건']
+export const EXCLUDED_WORDS = ['방법', '절차', '요건', '조건', '지침']
 
 /**
  * 텍스트가 순수 법령명인지 확인
@@ -35,12 +38,30 @@ export const EXCLUDED_WORDS = ['방법', '절차', '요건', '조건']
 export function isPureLawName(text: string): boolean {
   const trimmed = text.trim()
 
-  // 제외 단어 확인
   if (EXCLUDED_WORDS.includes(trimmed)) {
     return false
   }
 
   return PURE_LAW_NAME_PATTERN.test(trimmed)
+}
+
+/**
+ * 텍스트가 행정규칙명(고시/훈령/예규/지침)인지 확인
+ */
+export function isAdminRuleName(text: string): boolean {
+  const trimmed = text.trim()
+
+  // 단독 "지침"은 제외
+  if (EXCLUDED_WORDS.includes(trimmed)) {
+    return false
+  }
+
+  // 시행규칙은 법령이므로 제외
+  if (/시행규칙/.test(trimmed)) {
+    return false
+  }
+
+  return ADMIN_RULE_NAME_PATTERN.test(trimmed)
 }
 
 /**

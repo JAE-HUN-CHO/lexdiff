@@ -119,6 +119,7 @@ export interface SearchQuery {
   lawName: string
   article?: string
   jo?: string
+  searchType?: string
 }
 
 // ============================================================

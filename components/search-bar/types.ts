@@ -30,7 +30,7 @@ export interface SearchBarState {
   suggestions: Suggestion[]
   isLoadingSuggestions: boolean
   selectedIndex: number
-  searchType: "law" | "ordinance" | "ai" | null
+  searchType: "law" | "ordinance" | "admrul" | "ai" | null
   isNaturalQuery: boolean
   forceAiMode: boolean
   showChoiceDialog: boolean
@@ -44,7 +44,7 @@ export interface SearchBarActions {
   setSuggestions: (suggestions: Suggestion[]) => void
   setIsLoadingSuggestions: (loading: boolean) => void
   setSelectedIndex: (index: number) => void
-  setSearchType: (type: "law" | "ordinance" | "ai" | null) => void
+  setSearchType: (type: "law" | "ordinance" | "admrul" | "ai" | null) => void
   setIsNaturalQuery: (natural: boolean) => void
   setForceAiMode: (force: boolean) => void
   setShowChoiceDialog: (show: boolean) => void

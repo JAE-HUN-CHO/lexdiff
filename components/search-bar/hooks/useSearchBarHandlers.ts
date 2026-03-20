@@ -82,6 +82,21 @@ export function useSearchBarHandlers({
         return
       }
 
+      // 행정규칙 (훈령/예규/고시/지침)
+      if (classification.searchType === 'admrul') {
+        debugLogger.info("행정규칙 검색 실행", { query: searchQuery })
+        saveRecentSearch(searchQuery)
+        const parsed = parseSearchQuery(searchQuery)
+        onSearch({
+          ...parsed,
+          searchType: 'admrul',
+          classification,
+          rawQuery: searchQuery,
+        })
+        actions.setShowDropdown(false)
+        return
+      }
+
       // 자동 AI 모드
       if (classification.searchType === 'ai' && classification.confidence >= 0.7) {
         debugLogger.info("AI 검색 실행 (자동 감지)", { query: searchQuery, confidence: classification.confidence })

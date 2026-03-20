@@ -50,13 +50,16 @@ interface ReferenceModalProps {
   loading?: boolean
   /** 판례용 메타 정보 (헤더에 배지로 표시) */
   precedentMeta?: PrecedentMeta
-  /** 법령 전체보기 콜백 (제1조인 경우 모달 내에서 전체 조문 로딩) */
+  /** 법령 전체보기 콜백 */
   onViewFullLaw?: () => void
+  /** 다른 조문 검색 콜백 (같은 법령 내 조문 이동) */
+  onSearchArticle?: (articleLabel: string) => void
 }
 
-export function ReferenceModal({ isOpen, onClose, title, html, originalUrl, onContentClick, forceWhiteTheme = false, lawName, articleNumber, hasHistory = false, onBack, loading = false, precedentMeta, onViewFullLaw }: ReferenceModalProps) {
+export function ReferenceModal({ isOpen, onClose, title, html, originalUrl, onContentClick, forceWhiteTheme = false, lawName, articleNumber, hasHistory = false, onBack, loading = false, precedentMeta, onViewFullLaw, onSearchArticle }: ReferenceModalProps) {
   const [showOriginal, setShowOriginal] = useState(false)
   const [fontSize, setFontSize] = useState(14) // 기본 폰트 크기
+  const [articleInput, setArticleInput] = useState('') // 조문 검색 입력
   const contentRef = useRef<HTMLDivElement>(null)
   const savedScrollRef = useRef<number>(0) // 스크롤 위치 저장
   const onContentClickRef = useRef(onContentClick) // 콜백 ref로 저장 (의존성 제거용)
@@ -339,18 +342,50 @@ export function ReferenceModal({ isOpen, onClose, title, html, originalUrl, onCo
               }
               dangerouslySetInnerHTML={{ __html: processedHtml }}
             />
-            {/* 법령 전체보기 버튼 (제1조인 경우 - 목적 조항은 내용이 단순하므로) */}
-            {isFirstArticle && onViewFullLaw && (
-              <div className="px-4 sm:px-6 pb-4 pt-2 border-t border-border/50 mt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onViewFullLaw}
-                  className="w-full gap-2 h-9 text-sm hover:bg-primary/10"
-                >
-                  <Icon name="book-open" className="w-4 h-4" />
-                  <span>{lawName} 전체 조문 보기</span>
-                </Button>
+            {/* 조문 검색 + 전체보기 */}
+            {lawName && !precedentMeta && (onViewFullLaw || onSearchArticle) && (
+              <div className="px-4 sm:px-6 pb-4 pt-2 border-t border-border/50 mt-2 space-y-2">
+                {/* 다른 조문 검색 */}
+                {onSearchArticle && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      const val = articleInput.trim()
+                      if (!val) return
+                      // "5" → "제5조", "5조" → "제5조", "제5조" → "제5조", "제5조의2" → "제5조의2"
+                      const normalized = /^\d/.test(val)
+                        ? `제${val.replace(/조$/, '')}조`
+                        : val.startsWith('제') ? val : `제${val}`
+                      onSearchArticle(normalized)
+                      setArticleInput('')
+                    }}
+                    className="flex gap-1.5"
+                  >
+                    <input
+                      type="text"
+                      value={articleInput}
+                      onChange={(e) => setArticleInput(e.target.value)}
+                      placeholder="조문번호 (예: 5, 제3조의2)"
+                      className="flex-1 h-8 px-2.5 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <Button type="submit" variant="outline" size="sm" className="h-8 px-3 gap-1" disabled={!articleInput.trim()}>
+                      <Icon name="search" className="w-3.5 h-3.5" />
+                      <span className="text-xs">조회</span>
+                    </Button>
+                  </form>
+                )}
+                {/* 전체 조문 보기 */}
+                {onViewFullLaw && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onViewFullLaw}
+                    className="w-full gap-2 h-8 text-xs hover:bg-primary/10"
+                  >
+                    <Icon name="book-open" className="w-3.5 h-3.5" />
+                    <span>{lawName} 전체 조문 보기</span>
+                  </Button>
+                )}
               </div>
             )}
           </ScrollArea>

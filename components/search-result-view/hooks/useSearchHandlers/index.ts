@@ -17,6 +17,7 @@ import { useAiSearch } from "./useAiSearch"
 import { useBasicSearch } from "./useBasicSearch"
 import { useUnifiedSearch } from "./useUnifiedSearch"
 import { useBasicHandlers } from "./useBasicHandlers"
+import { isPureLawName, isAdminRuleName } from "@/src/domain/patterns/LawPattern"
 
 import type { UseSearchHandlersProps, SearchHandlers, HandlerDeps, SearchQuery } from "./types"
 
@@ -81,6 +82,19 @@ export function useSearchHandlers({
         debugLogger.warning('⚠️ 판례/해석례/재결례는 전용 핸들러를 사용해야 함')
         return
       }
+
+      // 행정규칙/법령/조례는 classification을 신뢰 → 재감지 스킵
+      if (['admrul', 'law', 'ordinance'].includes(classification.searchType) && classification.confidence >= 0.9) {
+        debugLogger.info('✅ 사전 분류 고신뢰 → 재감지 스킵', { searchType: classification.searchType })
+        const isAiSearch = effectiveForcedMode === 'ai'
+        if (isAiSearch) {
+          const aiQuery = (query as any).rawQuery || fullQuery
+          await handleAiSearch(aiQuery, signal, skipCache)
+        } else {
+          await handleBasicSearch(query, fullQuery, skipCache)
+        }
+        return
+      }
     }
 
     // 검색 모드 초기화
@@ -104,11 +118,10 @@ export function useSearchHandlers({
         if (isClearArticle) {
           queryDetection = { type: 'structured', confidence: 1.0, reason: '명확한 조문 번호 포함' }
         } else {
-          const pureLawNamePattern = /^[가-힣A-Za-z0-9·\s]+(?:법률\s*시행령|법률\s*시행규칙|법\s*시행령|법\s*시행규칙|법률|법|령|규칙|규정|조례|지침|고시|훈령|예규)$/
-          const isPureLawName = pureLawNamePattern.test(fullQuery.trim())
+          const isPure = isPureLawName(fullQuery.trim()) || isAdminRuleName(fullQuery.trim())
 
-          if (isPureLawName) {
-            queryDetection = { type: 'structured', confidence: 1.0, reason: '순수 법령명' }
+          if (isPure) {
+            queryDetection = { type: 'structured', confidence: 1.0, reason: '순수 법령명/행정규칙명' }
           } else if (hasOrdinance && /휴가|수당|근무|복무|급여|연차|보수|징계|임용|승진|전보|파견|겸직/.test(fullQuery)) {
             // 조례 + 주제 키워드 → 기본 조례 검색(키워드 매칭)으로는 내용 검색 불가 → AI 검색 필요
             queryDetection = { type: 'natural', confidence: 0.9, reason: '조례 + 주제 키워드 (AI 검색 필요)' }

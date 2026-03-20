@@ -103,12 +103,14 @@ function detectLawType(lawName: string): 'law' | 'ordinance' | 'admin' {
     return 'law'
   }
 
-  // 행정규칙: 훈령, 예규, 고시, 지침, 내규만
+  // 행정규칙: 훈령, 예규, 고시, 지침, 내규
   if (/훈령|예규|고시|지침|내규/.test(lawName)) {
     return 'admin'
   }
 
   // 일반 법령 (법, 령, 규칙, 규정 등)
+  // NOTE: "규정"은 대통령령(licbyl)과 행정규칙(admbyl) 양쪽에 존재 가능
+  // 1차로 law(licbyl)로 시도, 실패 시 route handler에서 admin fallback
   return 'law'
 }
 
@@ -132,6 +134,43 @@ function extractParentLawName(lawName: string): string | null {
 /**
  * 법제처 API에서 별표 목록을 가져와 LawAnnex[]로 변환
  */
+/**
+ * fetch with timeout + 1회 재시도 (법제처 API 일시 오류 대응)
+ */
+async function fetchWithTimeout(url: string, timeoutMs = 15000): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+    clearTimeout(timeoutId)
+
+    // 429/503/504: 1회 재시도 (2초 대기)
+    if ([429, 503, 504].includes(response.status)) {
+      debugLogger.warning("별표 API 일시 오류, 재시도", { status: response.status, url: url.substring(0, 80) })
+      await new Promise(r => setTimeout(r, 2000))
+      const retryController = new AbortController()
+      const retryTimeout = setTimeout(() => retryController.abort(), timeoutMs)
+      try {
+        const retry = await fetch(url, { signal: retryController.signal, cache: 'no-store' })
+        clearTimeout(retryTimeout)
+        return retry
+      } catch (retryErr) {
+        clearTimeout(retryTimeout)
+        throw retryErr
+      }
+    }
+
+    return response
+  } catch (err) {
+    clearTimeout(timeoutId)
+    throw err
+  }
+}
+
 async function fetchAnnexesFromApi(
   query: string,
   target: string,
@@ -153,30 +192,29 @@ async function fetchAnnexesFromApi(
   }
 
   const url = `${LAW_API_BASE}?${params.toString()}`
-  debugLogger.info("별표 목록 API 호출", { query, knd: knd || '전체', target, lawType, url })
+  debugLogger.info("별표 목록 API 호출", { query, knd: knd || '전체', target, lawType })
 
-  const response = await fetch(url, {
-    next: { revalidate: 3600 },
-  })
+  const response = await fetchWithTimeout(url)
 
   const text = await response.text()
 
   if (!response.ok) {
-    debugLogger.error("별표 목록 API 오류", { status: response.status, body: text.substring(0, 500) })
-    throw new Error(`API 호출 실패: ${response.status}`)
+    debugLogger.error("별표 목록 API 오류", { status: response.status, body: text.substring(0, 200) })
+    // throw 대신 빈 배열 반환 → 2차/3차 fallback이 실행되도록
+    return []
   }
 
   if (text.includes("<!DOCTYPE html") || text.includes("<html")) {
-    debugLogger.error("별표 목록 API가 HTML 오류 페이지를 반환했습니다", { url })
-    throw new Error("API가 오류 페이지를 반환했습니다")
+    debugLogger.error("별표 목록 API가 HTML 오류 페이지를 반환했습니다")
+    return []
   }
 
   let rawData: LicBylSearchResponse
   try {
     rawData = JSON.parse(text)
   } catch {
-    debugLogger.error("별표 목록 JSON 파싱 실패", { text: text.substring(0, 500) })
-    throw new Error("JSON 파싱 실패")
+    debugLogger.error("별표 목록 JSON 파싱 실패", { text: text.substring(0, 200) })
+    return []
   }
 
   const searchResult = lawType === 'admin' ? rawData.admRulBylSearch : rawData.licBylSearch
@@ -186,7 +224,6 @@ async function fetchAnnexesFromApi(
       lawType,
       hasLicBylSearch: !!rawData.licBylSearch,
       hasAdmRulBylSearch: !!rawData.admRulBylSearch,
-      text: text.substring(0, 500)
     })
     return []
   }
@@ -283,18 +320,25 @@ export async function GET(request: Request) {
       annexes = await fetchAnnexesFromApi(query, target, lawType)
     }
 
-    // 3차: 모법명으로 재검색 ("여권법 시행규칙" → "여권법")
+    // 3차: "규정" 타입 → admin(행정규칙) target으로 재시도
+    // "복무규정" 등이 대통령령(licbyl)에 없을 때 행정규칙(admbyl)에서 검색
+    if (annexes.length === 0 && lawType === 'law' && /규정/.test(query)) {
+      debugLogger.info("3차 검색: 규정 → admin target으로 재시도", { query })
+      annexes = await fetchAnnexesFromApi(query, 'admbyl', 'admin')
+    }
+
+    // 4차: 모법명으로 재검색 ("여권법 시행규칙" → "여권법")
     // 법제처 별표 API는 시행규칙/시행령을 직접 검색하면 0건인 경우가 있음
     if (annexes.length === 0) {
       const parentName = extractParentLawName(query)
       if (parentName) {
-        debugLogger.info("3차 검색: 모법명으로 재검색", { parentName, originalQuery: query })
+        debugLogger.info("4차 검색: 모법명으로 재검색", { parentName, originalQuery: query })
         const allAnnexes = await fetchAnnexesFromApi(parentName, target, lawType)
         // 원래 법령명과 일치하는 것만 필터링
         annexes = allAnnexes.filter(a => a.lawName === query)
         // 필터 후에도 없으면 모법명 결과 전체 반환 (관련 법령 전체 별표)
         if (annexes.length === 0 && allAnnexes.length > 0) {
-          debugLogger.info("3차 검색: 정확한 법령명 매칭 없음, 모법 전체 결과 반환", {
+          debugLogger.info("4차 검색: 정확한 법령명 매칭 없음, 모법 전체 결과 반환", {
             parentName,
             totalCount: allAnnexes.length,
           })
@@ -312,10 +356,16 @@ export async function GET(request: Request) {
       annexes,
     })
   } catch (error) {
-    debugLogger.error("별표 목록 조회 실패", error)
+    const msg = error instanceof Error ? error.message : "알 수 없는 오류"
+
+    // AbortError(타임아웃)는 504, 나머지는 502 (upstream 오류)
+    const isTimeout = error instanceof Error && error.name === "AbortError"
+    const status = isTimeout ? 504 : 502
+
+    debugLogger.error("별표 목록 조회 실패", { error: msg, status, query })
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "알 수 없는 오류" },
-      { status: 500 }
+      { error: isTimeout ? "법제처 API 응답 시간 초과" : msg, success: false, totalCount: 0, annexes: [] },
+      { status }
     )
   }
 }

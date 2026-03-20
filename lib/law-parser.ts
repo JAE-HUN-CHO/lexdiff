@@ -445,18 +445,20 @@ export function extractRelatedLaws(markdown: string): ParsedRelatedLaw[] {
 
   while ((quotedMatch = quotedLawPattern.exec(markdown)) !== null) {
     const lawName = quotedMatch[1].trim()
-    // leading zero 제거: "제0014조의02" → "14의2"
-    const normalizedNum = parseInt(quotedMatch[2], 10) + (quotedMatch[3] ? `의${parseInt(quotedMatch[3], 10)}` : '')
-    const jo = buildJO(String(normalizedNum))
+    // leading zero 제거: "제0014조의02" → "제14조의2"
+    const artNum = parseInt(quotedMatch[2], 10)
+    const branchNum = quotedMatch[3] ? parseInt(quotedMatch[3], 10) : 0
+    const article = branchNum > 0 ? `제${artNum}조의${branchNum}` : `제${artNum}조`
+    const jo = buildJO(article)
     const titlePart = quotedMatch[4]?.trim()  // (제목) 부분
 
     if (jo) {
       laws.push({
         lawName,
-        article: `제${normalizedNum}조`,
+        article,
         jo,
         title: titlePart,  // ✅ 조문 제목 추가
-        display: `${lawName} 제${normalizedNum}조${titlePart ? ' ' + titlePart : ''}`,
+        display: `${lawName} ${article}${titlePart ? ' ' + titlePart : ''}`,
         source: 'related'
       })
     }
@@ -474,24 +476,26 @@ export function extractRelatedLaws(markdown: string): ParsedRelatedLaw[] {
 
   while ((unquotedMatch = unquotedLawPattern.exec(markdown)) !== null) {
     const lawName = unquotedMatch[1].trim()
-    // leading zero 제거
-    const normalizedNum = parseInt(unquotedMatch[2], 10) + (unquotedMatch[3] ? `의${parseInt(unquotedMatch[3], 10)}` : '')
-    const jo = buildJO(String(normalizedNum))
+    // leading zero 제거: "제0014조의02" → "제14조의2"
+    const artNum = parseInt(unquotedMatch[2], 10)
+    const branchNum = unquotedMatch[3] ? parseInt(unquotedMatch[3], 10) : 0
+    const article = branchNum > 0 ? `제${artNum}조의${branchNum}` : `제${artNum}조`
+    const jo = buildJO(article)
 
     // 단독 '시행령', '시행규칙' 등 부모 법령명 없이 불완전한 법령명 제외
     if (/^시행(령|규칙)$/.test(lawName)) continue
 
     // 중복 체크: 같은 법령+조문이 이미 있는지 확인
     const isDuplicate = laws.some(l =>
-      l.lawName === lawName && l.article === `제${normalizedNum}조`
+      l.lawName === lawName && l.article === article
     )
 
     if (jo && !isDuplicate) {
       laws.push({
         lawName,
-        article: `제${normalizedNum}조`,
+        article,
         jo,
-        display: `${lawName} 제${normalizedNum}조`,
+        display: `${lawName} ${article}`,
         source: 'related'
       })
     }

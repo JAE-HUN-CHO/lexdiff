@@ -342,6 +342,13 @@ export function useLawViewerModals(meta: LawMeta, activeArticle: LawArticle | un
     openExternalLawArticleModal(currentLawName, '')
   }, [refModal.lawName])
 
+  // Handler: 같은 법령 내 다른 조문 검색
+  const handleSearchArticle = useCallback((articleLabel: string) => {
+    const currentLawName = refModal.lawName
+    if (!currentLawName) return
+    openExternalLawArticleModal(currentLawName, articleLabel)
+  }, [refModal.lawName, openExternalLawArticleModal])
+
   // Handler: 별표 모달 열기/닫기
   const openAnnexModal = useCallback((annexNumber: string, lawName: string, lawId?: string) => {
     debugLogger.info('[modal] 별표 모달 열기', { annexNumber, lawName, lawId })
@@ -362,6 +369,7 @@ export function useLawViewerModals(meta: LawMeta, activeArticle: LawArticle | un
     openLawHierarchyModal,
     handleRefModalBack,
     handleViewFullLaw,
+    handleSearchArticle,
     openAnnexModal,
     closeAnnexModal,
   }

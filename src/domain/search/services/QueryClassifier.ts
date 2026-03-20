@@ -23,6 +23,7 @@ import { detectQueryType, analyzeLegalQuestion } from './QueryAnalyzer'
 
 // Patterns
 import { isOrdinanceQuery, containsLocalGovName, LAW_ENFORCEMENT_PATTERN } from '../../patterns/OrdinancePattern'
+import { isAdminRuleName } from '../../patterns/LawPattern'
 
 /**
  * 통합 검색 쿼리 분류 함수 (메인)
@@ -108,7 +109,14 @@ export function classifySearchQuery(query: string): UnifiedQueryClassification {
     reason = '복합 쿼리 감지'
     matchedPatterns.push('multi')
   }
-  // 우선순위 5: 법령/조례 (구조화 검색)
+  // 우선순위 5: 행정규칙 (고시/훈령/예규/지침)
+  else if (isAdminRuleName(trimmedQuery)) {
+    searchType = 'admrul'
+    confidence = 0.95
+    reason = '행정규칙명 감지'
+    matchedPatterns.push('admrul')
+  }
+  // 우선순위 6: 법령/조례 (구조화 검색)
   else if (basicDetection.type === 'structured' && basicDetection.confidence >= 0.9) {
     searchType = isOrdinance ? 'ordinance' : 'law'
     confidence = basicDetection.confidence
@@ -125,7 +133,7 @@ export function classifySearchQuery(query: string): UnifiedQueryClassification {
     reason = basicDetection.reason
     matchedPatterns.push('ai')
   }
-  // 우선순위 7: 애매한 경우 (법령 우선)
+  // 우선순위 8: 애매한 경우 (법령 우선)
   else {
     if (legalQuestion.type === 'definition' &&
         extractedArticles.length > 0 &&
@@ -140,6 +148,11 @@ export function classifySearchQuery(query: string): UnifiedQueryClassification {
       confidence = legalQuestion.confidence
       reason = '자연어 질문 추정'
       matchedPatterns.push('ai')
+    } else if (isAdminRuleName(trimmedQuery)) {
+      searchType = 'admrul'
+      confidence = 0.75
+      reason = '행정규칙명 추정'
+      matchedPatterns.push('admrul')
     } else {
       searchType = isOrdinance ? 'ordinance' : 'law'
       // 조례 패턴 매칭 시 confidence 상향 (다이얼로그 방지)

@@ -222,11 +222,11 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   summarize_precedent: '판례 요약',
   extract_precedent_keywords: '판례 키워드 추출',
   // Chain tools (7)
-  chain_law_system: '⛓️ 법체계 파악',
-  chain_action_basis: '⛓️ 처분근거 확인',
-  chain_dispute_prep: '⛓️ 쟁송 대비',
-  chain_amendment_track: '⛓️ 개정 추적',
-  chain_ordinance_compare: '⛓️ 조례 비교',
-  chain_full_research: '⛓️ 종합 리서치',
-  chain_procedure_detail: '⛓️ 절차/비용 안내',
+  chain_law_system: '법체계 파악',
+  chain_action_basis: '처분근거 확인',
+  chain_dispute_prep: '쟁송 대비',
+  chain_amendment_track: '개정 추적',
+  chain_ordinance_compare: '조례 비교',
+  chain_full_research: '종합 리서치',
+  chain_procedure_detail: '절차/비용 안내',
 }

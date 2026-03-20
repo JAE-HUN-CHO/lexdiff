@@ -10,10 +10,11 @@ export type QueryType = 'structured' | 'natural'
 // 검색 모드 (레거시 호환)
 export type SearchMode = 'law' | 'ordinance' | 'ai'
 
-// 7가지 검색 타입
+// 8가지 검색 타입
 export type SearchType =
   | 'law'           // 법령
   | 'ordinance'     // 조례
+  | 'admrul'        // 행정규칙 (훈령/예규/고시/지침)
   | 'ai'            // AI 자연어 검색
   | 'precedent'     // 판례
   | 'interpretation' // 해석례
@@ -24,6 +25,7 @@ export type SearchType =
 export function toSearchMode(searchType: SearchType): SearchMode {
   switch (searchType) {
     case 'law':
+    case 'admrul':
       return 'law'
     case 'ordinance':
       return 'ordinance'
@@ -40,7 +42,7 @@ export function toSearchMode(searchType: SearchType): SearchMode {
 
 // 검색 타입이 법령 관련인지 확인
 export function isLawRelated(searchType: SearchType): boolean {
-  return searchType === 'law' || searchType === 'ordinance'
+  return searchType === 'law' || searchType === 'ordinance' || searchType === 'admrul'
 }
 
 // 검색 타입이 AI 관련인지 확인

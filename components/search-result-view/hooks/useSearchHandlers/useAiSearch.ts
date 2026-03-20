@@ -19,6 +19,7 @@ export function useAiSearch(deps: HandlerDeps) {
   const abortRef = useRef<AbortController | null>(null)
   const streamBufferRef = useRef<string>('')  // 스트리밍 토큰 누적 버퍼
   const answerReceivedRef = useRef(false)  // answer 이벤트 수신 여부
+  const answerTokenStartedRef = useRef(false)  // 첫 answer_token 수신 여부
 
   /** 현재 답변을 대화 히스토리에 저장 */
   const saveCurrentToHistory = useCallback(() => {
@@ -88,10 +89,23 @@ export function useAiSearch(deps: HandlerDeps) {
     }
     const controller = new AbortController()
     abortRef.current = controller
-    // 외부 signal과 내부 controller 병합
-    const mergedSignal = signal
-      ? AbortSignal.any([signal, controller.signal])
-      : controller.signal
+    // 외부 signal과 내부 controller 병합 (AbortSignal.any 미지원 브라우저 대응)
+    let mergedSignal: AbortSignal
+    if (signal) {
+      if (typeof AbortSignal.any === 'function') {
+        mergedSignal = AbortSignal.any([signal, controller.signal])
+      } else {
+        // 폴백: 외부 signal abort 시 내부 controller도 abort
+        const onExternalAbort = () => controller.abort()
+        signal.addEventListener('abort', onExternalAbort, { once: true })
+        controller.signal.addEventListener('abort', () => {
+          signal.removeEventListener('abort', onExternalAbort)
+        }, { once: true })
+        mergedSignal = controller.signal
+      }
+    } else {
+      mergedSignal = controller.signal
+    }
 
     // RAG 캐시 확인
     const cached = skipCache ? null : await getCachedResponse(fullQuery)
@@ -139,6 +153,7 @@ export function useAiSearch(deps: HandlerDeps) {
     actions.updateProgress('analyzing', 5)
     streamBufferRef.current = '' // 스트리밍 버퍼 초기화
     answerReceivedRef.current = false
+    answerTokenStartedRef.current = false
 
     // AI 뷰 즉시 표시
     const aiLawData: LawDataState = {
@@ -321,6 +336,17 @@ export function useAiSearch(deps: HandlerDeps) {
           // 스트리밍 토큰: 답변을 실시간으로 누적 표시
           const tokenText = event.data?.text || ''
           if (tokenText) {
+            // 첫 토큰 수신 시 "답변 생성 중" 단계 추가 (타임라인에 표시)
+            if (!answerTokenStartedRef.current) {
+              answerTokenStartedRef.current = true
+              actions.addToolCallLog({
+                id: `log-${++logIdCounter}`,
+                type: 'call',
+                name: 'generate_answer',
+                displayName: '답변 생성',
+                timestamp: Date.now(),
+              })
+            }
             streamBufferRef.current += tokenText
             actions.setAiAnswerContent(streamBufferRef.current)
             actions.updateProgress('streaming', 75)
@@ -360,6 +386,18 @@ export function useAiSearch(deps: HandlerDeps) {
             },
             articles: [], selectedJo: undefined, isOrdinance: false
           })
+
+          // "답변 생성" 단계 완료 마킹
+          if (answerTokenStartedRef.current) {
+            actions.addToolCallLog({
+              id: `log-${++logIdCounter}`,
+              type: 'result',
+              name: 'generate_answer',
+              displayName: '답변 생성',
+              success: true,
+              timestamp: Date.now(),
+            })
+          }
 
           // 검색 완료 즉시 (isStreaming=false → 깜빡임 커서 즉시 제거)
           answerReceivedRef.current = true

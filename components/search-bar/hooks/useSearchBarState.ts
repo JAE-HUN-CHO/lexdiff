@@ -29,7 +29,7 @@ export function useSearchBarState(searchMode: 'basic' | 'rag' = 'basic') {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
-  const [searchType, setSearchType] = useState<"law" | "ordinance" | "ai" | null>(null)
+  const [searchType, setSearchType] = useState<"law" | "ordinance" | "admrul" | "ai" | null>(null)
   const [isNaturalQuery, setIsNaturalQuery] = useState(false)
   const [forceAiMode, setForceAiMode] = useState(false)
   const [showChoiceDialog, setShowChoiceDialog] = useState(false)
@@ -54,6 +54,12 @@ export function useSearchBarState(searchMode: 'basic' | 'rag' = 'basic') {
     if (classification.searchType === 'ai' && classification.confidence >= 0.7) {
       setSearchType("ai")
       setIsNaturalQuery(true)
+      return
+    }
+
+    if (classification.searchType === 'admrul') {
+      setSearchType("admrul")
+      setIsNaturalQuery(false)
       return
     }
 

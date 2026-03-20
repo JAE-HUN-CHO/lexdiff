@@ -9,7 +9,8 @@ import { debugLogger } from "@/lib/debug-logger"
 import { normalizeLawSearchText } from "@/lib/search-normalizer"
 import { parseLawSearchXML } from "@/lib/law-search-parser"
 import { parseOrdinanceSearchXML } from "@/lib/ordin-search-parser"
-import { buildFullQuery, isOrdinanceQuery as checkIsOrdinanceQuery } from "../../utils"
+import { parseAdminRuleList } from "@/lib/admrul-parser"
+import { buildFullQuery, isOrdinanceQuery as checkIsOrdinanceQuery, hasAdminRuleKeyword } from "../../utils"
 import { buildOrdinanceSearchStrategies, scoreRelevance, expandForLawSearch } from "@/lib/query-expansion"
 import type { HandlerDeps, SearchQuery, LawSearchResult } from "./types"
 
@@ -30,13 +31,16 @@ export function useBasicSearch(deps: UseBasicSearchDeps) {
     actions.resetSearchState()
 
     const apiLogs: Array<{ url: string; method: string; status?: number; response?: string }> = []
-    const isOrdinance = checkIsOrdinanceQuery(fullQuery)
+    // classification의 searchType 우선, 없으면 문자열 분석 폴백
+    const classifiedType = query.searchType
+    const isAdminRule = classifiedType === 'admrul' || (!classifiedType && hasAdminRuleKeyword(fullQuery))
+    const isOrdinance = classifiedType === 'ordinance' || (!classifiedType && !isAdminRule && checkIsOrdinanceQuery(fullQuery))
     const lawName = query.lawName
 
-    debugLogger.info(isOrdinance ? "조례 검색 시작" : "법령 검색 시작", { lawName })
+    debugLogger.info(isAdminRule ? "행정규칙 검색 시작" : isOrdinance ? "조례 검색 시작" : "법령 검색 시작", { lawName, classifiedType })
 
     // IndexedDB 우선 체크 (법령만, skipCache 시 스킵)
-    if (!isOrdinance && !skipCache) {
+    if (!isOrdinance && !isAdminRule && !skipCache) {
       const rawQuery = buildFullQuery(query.lawName, query.article)
 
       try {
@@ -102,7 +106,58 @@ export function useBasicSearch(deps: UseBasicSearchDeps) {
       actions.setIsSearching(true)
       actions.updateProgress('searching', 40)
 
-      if (isOrdinance) {
+      if (isAdminRule) {
+        // ── 행정규칙 검색 ──
+        actions.updateProgress('searching', 50)
+
+        const apiUrl = `/api/admrul-search?query=${encodeURIComponent(lawName)}&search=1`
+        try {
+          const response = await fetch(apiUrl)
+          apiLogs.push({ url: apiUrl, method: "GET", status: response.status })
+
+          if (!response.ok) {
+            throw new Error(`행정규칙 API 응답 오류: ${response.status}`)
+          }
+
+          const xmlText = await response.text()
+          const adminRules = parseAdminRuleList(xmlText)
+          debugLogger.info(`[admrul-search] "${lawName}" → ${adminRules.length}건`)
+
+          actions.updateProgress('parsing', 70)
+
+          if (adminRules.length === 0) {
+            debugLogger.warning(`⚠️ [행정규칙 검색] "${lawName}" 검색 결과 없음 -> AI 검색 제안`)
+            actions.setPendingQuery(query)
+            actions.setIsSearching(false)
+            actions.updateProgress('complete', 0)
+            actions.setShowChoiceDialog(true)
+            toast({ title: "검색 결과 없음", description: "정확한 행정규칙을 찾을 수 없어 AI 검색을 제안합니다." })
+            return
+          }
+
+          // AdminRuleListItem → LawSearchResult 매핑 (기존 선택 리스트 재사용)
+          const results: LawSearchResult[] = adminRules.map(rule => ({
+            lawId: rule.id,
+            lawMST: rule.serialNumber || rule.id,
+            lawName: rule.name,
+            lawType: rule.type || '행정규칙',
+            promulgationDate: rule.publishDate || '',
+            enforcementDate: rule.effectiveDate || '',
+          }))
+
+          actions.setLawSelectionState({ results, query: { lawName } })
+          actions.setMobileView("list")
+          actions.updateProgress('complete', 100)
+          actions.setIsSearching(false)
+        } catch (error) {
+          debugLogger.error("[admrul-search] 검색 오류:", error)
+          reportError("행정규칙 검색", error instanceof Error ? error : new Error(String(error)), { query }, apiLogs)
+          toast({ title: "검색 실패", description: error instanceof Error ? error.message : "행정규칙 검색 중 오류가 발생했습니다.", variant: "destructive" })
+          actions.setLawData(null)
+          actions.setIsSearching(false)
+          actions.updateProgress('complete', 0)
+        }
+      } else if (isOrdinance) {
         // 다단계 검색 전략 생성 (동의어 확장 + 필살기 포함)
         const strategies = buildOrdinanceSearchStrategies(lawName)
 
