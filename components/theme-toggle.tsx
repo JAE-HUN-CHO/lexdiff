@@ -21,8 +21,9 @@ export function ThemeToggle() {
 
     const newTheme = theme === "dark" ? "light" : "dark"
 
-    // View Transition API 지원 확인
-    if (!document.startViewTransition) {
+    // View Transition API 지원 확인 + reduced-motion 존중
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!document.startViewTransition || prefersReducedMotion) {
       setTheme(newTheme)
       return
     }
@@ -61,7 +62,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <button className="flex items-center justify-center">
+      <button className="flex items-center justify-center min-w-[36px] min-h-[36px]" aria-label="테마 전환">
         <Icon name="sun" size={16} className="text-muted-foreground" />
       </button>
     )
@@ -72,7 +73,8 @@ export function ThemeToggle() {
       ref={buttonRef}
       onClick={toggleTheme}
       title={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
-      className="flex items-center justify-center cursor-pointer"
+      aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+      className="flex items-center justify-center cursor-pointer min-w-[36px] min-h-[36px] rounded-md hover:bg-muted transition-colors"
     >
       {theme === "dark" ? (
         <Icon name="sun" size={16} className="text-muted-foreground hover:text-foreground" />

@@ -90,6 +90,7 @@ export function SearchBarHome({ onSearch, isLoading, searchMode = 'basic' }: Sea
               <Input
                 ref={inputRef}
                 type="text"
+                aria-label={isAiMode ? "AI 법률 자문 검색" : "법령명, 조문번호 검색"}
                 placeholder={isAiMode
                   ? (isMobile ? 'AI 법률 자문' : 'AI 법률 자문 (예: "수출통관 절차는?", "청년 창업 지원제도는?")')
                   : (isMobile ? '법령명, 조문번호 검색' : '법령명, 조문번호 검색 (예: "관세법 38조", "근로기준법")')

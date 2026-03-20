@@ -48,6 +48,7 @@ export function SwipeTutorial({ onComplete }: SwipeTutorialProps) {
         <button
           onClick={() => handleDismiss(false)}
           className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+          aria-label="튜토리얼 닫기"
         >
           <Icon name="x" className="h-5 w-5" />
         </button>

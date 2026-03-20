@@ -217,3 +217,37 @@
       var(--border) 80%,
       transparent 100%);
 }
+
+/* ============================================
+   Reduced Motion — 접근성
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer,
+  .animate-slide,
+  .animate-swipe-left,
+  .animate-swipe-right {
+    animation: none;
+  }
+
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-fade-in-scale,
+  .animate-scale-in,
+  .animate-shake {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .reveal-on-scroll {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .reveal-stagger > * {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

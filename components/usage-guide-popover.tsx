@@ -31,11 +31,14 @@ export function UsageGuidePopover({
     setMounted(true)
 
     if (showOnFirstVisit) {
+      // 모바일에서는 SwipeTutorial과 충돌하므로 자동 오픈 비활성화
+      const isMobile = window.innerWidth < 768
+      if (isMobile) return
+
       const storageKey = `${STORAGE_KEY_PREFIX}${type}`
       const hasSeen = localStorage.getItem(storageKey)
 
       if (!hasSeen) {
-        // 첫 방문 시 약간의 딜레이 후 자동으로 표시
         const timer = setTimeout(() => {
           setOpen(true)
           localStorage.setItem(storageKey, 'true')

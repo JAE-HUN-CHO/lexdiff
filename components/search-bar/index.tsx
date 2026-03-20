@@ -92,6 +92,7 @@ export function SearchBar({ onSearch, isLoading, searchMode = 'basic' }: SearchB
                 <Input
                   ref={inputRef}
                   type="text"
+                  aria-label={isAiMode ? "AI 법률 자문 검색" : "법령명 또는 조문 검색"}
                   placeholder={isAiMode ? 'AI에게 질문하세요... 예: "수출통관 절차는?", "청년 창업 지원은?"' : '법령명 또는 조문 검색... 예: "관세법 38조", "민법 제1조"'}
                   value={query}
                   onChange={(e) => {
