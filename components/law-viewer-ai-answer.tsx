@@ -1090,21 +1090,14 @@ function buildSteps(logs: ToolCallLogEntry[], isStreaming = true) {
         }
     }
 
-    // call이 없는 경우 status만으로 단계 구성
-    if (calls.length === 0 && logs.length > 0) {
-        const statuses = logs.filter(l => l.type === 'status')
-        for (let i = 0; i < statuses.length; i++) {
-            const next = statuses[i + 1]
-            const isLast = i === statuses.length - 1
-            steps.push({
-                name: `status-${i}`,
-                displayName: statuses[i].message || statuses[i].displayName,
-                status: isLast && isStreaming ? 'in-progress' : 'completed',
-                durationMs: next?.timestamp && statuses[i].timestamp ? (next.timestamp - statuses[i].timestamp) : undefined,
-                success: true,
-                statusMessages: [],
-            })
-        }
+    // call이 없는 경우 — status만 있으면 대기 중 표시 (개별 단계로 나열하지 않음)
+    if (calls.length === 0 && isStreaming && logs.length > 0) {
+        steps.push({
+            name: 'waiting',
+            displayName: '법령 데이터 수집 중',
+            status: 'in-progress',
+            statusMessages: [],
+        })
     }
 
     // 마지막에 남은 status 메시지 (진행 중 단계 하위 표시용)

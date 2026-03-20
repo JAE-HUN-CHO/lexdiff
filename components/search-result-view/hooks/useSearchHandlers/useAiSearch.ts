@@ -306,8 +306,15 @@ export function useAiSearch(deps: HandlerDeps) {
           if (!answerReceivedRef.current) {
             actions.updateProgress('streaming', resolvedProgress)
           }
-          // status 메시지는 프로그레스 바만 업데이트 — 타임라인에는 추가하지 않음
-          // (tool_call/tool_result가 타임라인에 별도로 표시되므로 중복 제거)
+          // status는 타임라인 단독 단계로는 안 쓰이지만,
+          // 진행 중인 도구 단계 아래 하위 텍스트로 표시됨 (lastStatusMessage)
+          actions.addToolCallLog({
+            id: `log-${++logIdCounter}`,
+            type: 'status',
+            displayName: event.message,
+            message: event.message,
+            timestamp: Date.now(),
+          })
           break
         }
         case 'tool_call': {
