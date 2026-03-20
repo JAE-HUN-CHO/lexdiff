@@ -162,11 +162,19 @@ function processSSEEvent(
         // 실시간 SSE에서 tool_call/tool_result를 이미 전달했으므로 done.toolsUsed 재전송 생략
         // 소스 정보 전달
         send({ type: 'source', source: 'openclaw' })
+        // Bridge citation 형태(text/fromEvidence) → FCRAGCitation(chunkText/source) 변환
+        const rawCitations = parsed.citations || []
+        const normalizedCitations: FCRAGResult['citations'] = rawCitations.map((c: Record<string, unknown>) => ({
+          lawName: String(c.lawName || ''),
+          articleNumber: String(c.articleNumber || ''),
+          chunkText: String(c.chunkText || c.text || ''),
+          source: String(c.source || (c.fromEvidence ? 'evidence' : 'text')),
+        }))
         send({
           type: 'answer',
           data: {
             answer: String(parsed.answer || '').trim(),
-            citations: parsed.citations || [],
+            citations: normalizedCitations,
             confidenceLevel: parsed.confidenceLevel || 'medium',
             complexity: parsed.complexity || 'moderate',
             queryType: (parsed.queryType || 'definition') as LegalQueryType,
