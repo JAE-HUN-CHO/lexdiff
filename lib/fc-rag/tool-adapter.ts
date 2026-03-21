@@ -142,7 +142,7 @@ const CACHE_TTL: Record<string, number> = {
   search_precedents: 12 * 3600_000,
   search_interpretations: 12 * 3600_000,
   search_ordinance: 12 * 3600_000,
-  search_ai_law: 3 * 3600_000,
+  search_ai_law: 12 * 3600_000,
   advanced_search: 6 * 3600_000,
   search_all: 6 * 3600_000,
   find_similar_precedents: 12 * 3600_000,

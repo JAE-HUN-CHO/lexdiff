@@ -71,6 +71,10 @@ const PRELOAD_LAWS: Array<[string, string]> = [
   ['아동복지법', '268588'], ['노인복지법', '268591'],
   ['장애인복지법', '268589'], ['사회복지사업법', '268586'],
   ['도시공원 및 녹지 등에 관한 법률', '268603'],
+  ['주차장법', '268748'], ['도시교통정비 촉진법', '268745'],
+  ['산림자원의 조성 및 관리에 관한 법률', '268653'],
+  ['농지법', '268649'], ['축산법', '268650'],
+  ['수산업법', '268651'], ['식품안전기본법', '286258'],
 ]
 
 for (const [name, mst] of PRELOAD_LAWS) {
@@ -165,7 +169,13 @@ export function detectFastPath(query: string): FastPathDetection {
     return { type: 'law_system', lawName: lawSystemMatch[1].trim(), searchQuery: lawSystemMatch[1].trim(), toolName: 'chain_law_system' }
   }
 
-  // ── 패턴 7: 법명+조문번호 ──
+  // ── 패턴 7: 법체계 조회 ("XX법 위임법령", "XX법 3단비교") ──
+  const threeTierMatch = query.match(/^(.+?법)\s*(?:위임법령|3단비교|하위법령|법체계|시행령)[\s?]*$/)
+  if (threeTierMatch && !/비교|개정|판례/.test(query)) {
+    return { type: 'law_system', lawName: threeTierMatch[1].trim(), searchQuery: threeTierMatch[1].trim(), toolName: 'chain_law_system' }
+  }
+
+  // ── 패턴 8: 법명+조문번호 ──
   // 복잡한 키워드가 있으면 full pipeline으로
   if (/(?:비교|판례|해석례|개정|위임|시행령|시행규칙|신구|대조|이력|조례|자치법규|처벌|벌칙|과태료|면제|감면|특례|예외)/.test(query)) {
     return { type: 'none' }

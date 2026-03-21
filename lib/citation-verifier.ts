@@ -106,8 +106,8 @@ export async function verifyCitation(citation: Citation): Promise<VerifiedCitati
 export async function verifyAllCitations(
   citations: Citation[]
 ): Promise<VerifiedCitation[]> {
-  // 법제처 API rate limit 고려: 동시 3건씩 배치 검증
-  const BATCH_SIZE = 3
+  // 법제처 API rate limit (1000/min) 고려: 동시 10건 배치 검증
+  const BATCH_SIZE = 10
   const results: VerifiedCitation[] = []
   for (let i = 0; i < citations.length; i += BATCH_SIZE) {
     const batch = citations.slice(i, i + BATCH_SIZE)

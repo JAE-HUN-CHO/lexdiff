@@ -18,7 +18,7 @@
 import { GoogleGenAI, type Part } from '@google/genai'
 import { getToolDeclarations, executeTool, executeToolsParallel, type ToolCallResult } from './tool-adapter'
 import { buildSystemPrompt, type LegalQueryType } from './prompts'
-import { TOOL_DISPLAY_NAMES, selectToolsForQuery, CHAIN_COVERS } from './tool-tiers'
+import { TOOL_DISPLAY_NAMES, selectToolsForQuery, CHAIN_COVERS, detectDomain } from './tool-tiers'
 import { KNOWN_MST, cacheMSTEntries, detectFastPath, parseLawEntries, findBestMST, findBestOrdinanceSeq, type LawEntry } from './fast-path'
 import { buildCitations, calcConfidence, parseCitationsFromAnswer } from './citations'
 import { summarizeToolResult, getToolCallQuery, correctToolArgs, rerankAiSearchResult } from './result-utils'
@@ -95,12 +95,21 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   })
 }
 
-/** complexity 기반 최대 도구 턴 수 */
+/** Gemini: complexity 기반 최대 도구 턴 수 */
 function getMaxToolTurns(complexity: QueryComplexity): number {
   switch (complexity) {
     case 'simple': return 2
     case 'moderate': return 3
     case 'complex': return 4
+  }
+}
+
+/** Claude CLI: complexity 기반 max-turns (도구 호출 횟수 제한) */
+function getMaxClaudeTurns(complexity: QueryComplexity): number {
+  switch (complexity) {
+    case 'simple': return 5
+    case 'moderate': return 8
+    case 'complex': return 12
   }
 }
 
@@ -260,7 +269,8 @@ export async function* executeClaudeRAGStream(
   yield { type: 'status', message: `질문 분석 완료 (${complexityLabel})`, progress: 8 }
 
   // ── preEvidence 있으면 fast-path 스킵 (이미 조문 데이터 있음) ──
-  if (!preEvidence) {
+  let collectedEvidence = preEvidence
+  if (!collectedEvidence) {
     // ── Fast Path: LLM 없이 직접 도구 호출 ──
     const fastPathGen = handleFastPath(query, queryType, signal)
     let fastPathNext = await fastPathGen.next()
@@ -269,6 +279,56 @@ export async function* executeClaudeRAGStream(
       fastPathNext = await fastPathGen.next()
     }
     if (fastPathNext.value === true) return
+  }
+
+  // ── 분류기 기반 Pre-evidence 수집 ──
+  // 복잡도 + queryType + domain 조합으로 최적 사전 수집 전략 결정.
+  // LLM이 도구를 고르는 대신, 분류기가 먼저 핵심 데이터를 수집하여 Claude 턴 수 절감.
+  if (!collectedEvidence) {
+    const domain = detectDomain(query)
+    const preResults: string[] = []
+
+    if (complexity === 'simple') {
+      // simple: search_ai_law 1회로 사전 수집 → Claude는 정리만
+      yield { type: 'status', message: '관련 법령 사전 검색 중...', progress: 12 }
+      const aiSearch = await executeTool('search_ai_law', { query }, signal)
+      if (!aiSearch.isError && aiSearch.result.length > 200) {
+        yield { type: 'tool_call', name: 'search_ai_law', displayName: TOOL_DISPLAY_NAMES['search_ai_law'], query }
+        yield { type: 'tool_result', name: 'search_ai_law', displayName: TOOL_DISPLAY_NAMES['search_ai_law'], success: true, summary: summarizeToolResult('search_ai_law', aiSearch) }
+        preResults.push(aiSearch.result)
+      }
+    } else if (complexity === 'moderate') {
+      // moderate: 도메인별 최적 도구 1-2회 사전 호출
+      yield { type: 'status', message: '도메인별 법령 사전 수집 중...', progress: 12 }
+      const aiSearch = await executeTool('search_ai_law', { query }, signal)
+      if (!aiSearch.isError && aiSearch.result.length > 200) {
+        yield { type: 'tool_call', name: 'search_ai_law', displayName: TOOL_DISPLAY_NAMES['search_ai_law'], query }
+        yield { type: 'tool_result', name: 'search_ai_law', displayName: TOOL_DISPLAY_NAMES['search_ai_law'], success: true, summary: summarizeToolResult('search_ai_law', aiSearch) }
+        preResults.push(aiSearch.result)
+      }
+      // 벌칙 질문이면 법령 검색 → 벌칙 조문 사전 수집
+      if (queryType === 'consequence') {
+        const lawMatch = query.match(/「([^」]+)」/) || query.match(/([\w가-힣]+법)/)
+        if (lawMatch) {
+          const searchRes = await executeTool('search_law', { query: lawMatch[1] }, signal)
+          if (!searchRes.isError) {
+            const entries = parseLawEntries(searchRes.result)
+            cacheMSTEntries(entries)
+            const mst = findBestMST(entries, query)
+            if (mst) {
+              // 벌칙 조문 직접 조회
+              const penaltySearch = await executeTool('search_ai_law', { query: `${lawMatch[1]} 벌칙 과태료` }, signal)
+              if (!penaltySearch.isError) preResults.push(penaltySearch.result)
+            }
+          }
+        }
+      }
+    }
+    // complex: 사전 수집 없이 Claude에게 풀 파이프라인 위임
+
+    if (preResults.length > 0) {
+      collectedEvidence = preResults.join('\n\n---\n\n')
+    }
   }
 
   // ── Full Pipeline: Claude CLI stream-json 모드로 실시간 도구 호출 추적 ──
@@ -282,14 +342,19 @@ export async function* executeClaudeRAGStream(
   }
 
   try {
-    // preEvidence가 있으면 조문 데이터를 user message에 주입 → 도구 호출 0회 즉답
-    const userContent = preEvidence
-      ? `⚡ 빠른 답변 모드 — 필요한 조문이 이미 수집됨.\n규칙: MCP 도구를 일절 호출하지 말 것. 아래 조문 데이터만으로 즉시 답변.\n\n[사전 수집된 법령 조문]\n${preEvidence}\n\n${query}`
+    // collectedEvidence가 있으면 조문 데이터를 user message에 주입 → 도구 호출 최소화
+    const hasEvidence = !!collectedEvidence
+    const userContent = collectedEvidence
+      ? `⚡ 빠른 답변 모드 — 필요한 조문이 이미 수집됨.\n규칙: 아래 데이터만으로 답변 가능하면 추가 도구 호출하지 말 것. 부족한 경우에만 최소한의 추가 도구 사용.\n\n[사전 수집된 법령 데이터]\n${collectedEvidence}\n\n${query}`
       : query
     const messages: DirectMessage[] = [{ role: 'user', content: userContent }]
     let toolCount = 0
+    // simple+사전수집 → 최대 3턴(보충 허용), moderate+사전수집 → 5턴, 나머지 → 복잡도 기본값
+    const maxTurns = hasEvidence
+      ? (complexity === 'simple' ? 3 : 5)
+      : getMaxClaudeTurns(complexity)
 
-    for await (const event of callAnthropicStream(systemPrompt, messages, { signal, maxTurns: preEvidence ? 1 : undefined })) {
+    for await (const event of callAnthropicStream(systemPrompt, messages, { signal, maxTurns })) {
       if (signal?.aborted) {
         yield { type: 'status', message: '검색이 취소되었습니다.', progress: 0 }
         return
@@ -382,7 +447,8 @@ export async function* executeGeminiRAGStream(
   yield { type: 'status', message: `질문 분석 완료 (${complexityLabel})`, progress: 8 }
 
   // ── preEvidence 있으면 fast-path 스킵 ──
-  if (!preEvidence) {
+  let geminiEvidence = preEvidence
+  if (!geminiEvidence) {
     // ── Fast Path ──
     const fastPathGen = handleFastPath(query, queryType, signal)
     let fastPathNext = await fastPathGen.next()
@@ -391,6 +457,17 @@ export async function* executeGeminiRAGStream(
       fastPathNext = await fastPathGen.next()
     }
     if (fastPathNext.value === true) return
+  }
+
+  // ── 분류기 기반 Pre-evidence (Gemini도 동일 전략) ──
+  if (!geminiEvidence && (complexity === 'simple' || complexity === 'moderate')) {
+    yield { type: 'status', message: '관련 법령 사전 검색 중...', progress: 12 }
+    const aiSearch = await executeTool('search_ai_law', { query }, signal)
+    if (!aiSearch.isError && aiSearch.result.length > 200) {
+      yield { type: 'tool_call', name: 'search_ai_law', displayName: TOOL_DISPLAY_NAMES['search_ai_law'], query }
+      yield { type: 'tool_result', name: 'search_ai_law', displayName: TOOL_DISPLAY_NAMES['search_ai_law'], success: true, summary: summarizeToolResult('search_ai_law', aiSearch) }
+      geminiEvidence = aiSearch.result
+    }
   }
 
   // ── Full Pipeline: Gemini 멀티턴 ──
@@ -416,9 +493,9 @@ export async function* executeGeminiRAGStream(
   const selectedTools = new Set(selectToolsForQuery(query))
   const toolDeclarations = getToolDeclarations().filter(d => selectedTools.has(d.name!))
 
-  // preEvidence: 이미 수집된 조문으로 즉답 (도구 호출 불필요)
-  const userText = preEvidence
-    ? `⚡ 빠른 답변 모드 — 필요한 조문이 이미 수집됨.\n규칙: 도구를 일절 호출하지 말 것. 아래 조문 데이터만으로 즉시 답변.\n\n[사전 수집된 법령 조문]\n${preEvidence}\n\n${query}`
+  // geminiEvidence: 이미 수집된 조문으로 즉답 또는 보충만
+  const userText = geminiEvidence
+    ? `⚡ 빠른 답변 모드 — 필요한 조문이 이미 수집됨.\n규칙: 아래 데이터만으로 답변 가능하면 추가 도구 호출하지 말 것. 부족한 경우에만 최소한 추가 사용.\n\n[사전 수집된 법령 데이터]\n${geminiEvidence}\n\n${query}`
     : query
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -805,18 +882,20 @@ export async function* executeGeminiRAGStream(
         warnings.push(...errors.map(e => `도구 오류 (${e.name}): ${e.result.slice(0, 100)}`))
       }
 
-      // 히스토리 추가
-      const modelParts = [...parts]
-      for (const chain of autoChains) {
-        modelParts.push({ functionCall: { name: chain.name, args: chain.args } } as Part)
+      // 히스토리 추가 — auto-chain은 functionCall로 위장하지 않고 텍스트로 보충
+      // (Gemini 2.5 Flash의 thought_signature 요구사항 호환)
+      messages.push({ role: 'model', parts })
+      const responseParts: any[] = results.slice(0, results.length - autoChains.length).map(r => ({
+        functionResponse: { name: r.name, response: { result: r.result } },
+      }))
+      // auto-chain 결과는 보충 텍스트로 추가 (thought_signature 필요 없음)
+      if (autoChains.length > 0) {
+        const autoTexts = results.slice(results.length - autoChains.length)
+          .map(r => `[보충 조회: ${TOOL_DISPLAY_NAMES[r.name] || r.name}]\n${r.result}`)
+          .join('\n\n')
+        responseParts.push({ text: autoTexts })
       }
-      messages.push({ role: 'model', parts: modelParts })
-      messages.push({
-        role: 'user',
-        parts: results.map(r => ({
-          functionResponse: { name: r.name, response: { result: r.result } },
-        })),
-      })
+      messages.push({ role: 'user', parts: responseParts })
 
       turnCount++
     } catch (error) {
@@ -871,7 +950,8 @@ function inferComplexity(query: string): QueryComplexity {
   const articleMatches = query.match(/제\d+조(?:의\d+)?/g) || []
 
   const complexPatterns = /(?:하고|와\s*함께|판례|전후\s*비교|비교해|변경.{0,5}판례|개정.{0,5}판례)/
-  const moderatePatterns = /(?:위임|시행령|시행규칙|해석례|유권해석|이력|변경|개정|바뀐|신구|대조|절차|방법)/
+  // 벌칙/처벌/과태료: 본문+벌칙편 양쪽 조회 필요 → moderate 이상
+  const moderatePatterns = /(?:위임|시행령|시행규칙|해석례|유권해석|이력|변경|개정|바뀐|신구|대조|절차|방법|벌칙|처벌|과태료|벌금|영업정지|허가취소|감면|면제|비과세|특례|요건)/
 
   // 요구 자료 종류 수: 판례+해석례+조문+별표 등 다양한 자료 요구 시 complex
   const sourceTypes = [

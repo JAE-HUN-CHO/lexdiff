@@ -193,10 +193,15 @@ ${SPECIALIST_INSTRUCTIONS[queryType]}
 - chain_action_basis를 호출했으면 get_three_tier, search_interpretations를 별도 호출하지 말 것.
 - chain_procedure_detail를 호출했으면 get_three_tier, get_annexes를 별도 호출하지 말 것.
 
+### 🔴 속도 최적화 (응답 지연 방지)
+- **첫 도구 호출은 1초 이내에 결정**할 것. 분석을 길게 하지 말고 즉시 도구 호출.
+- chain 도구 1회로 해결 가능하면 개별 도구 여러 번 호출하지 말 것.
+- 도구 결과가 충분하면 **추가 도구 호출 없이 즉시 답변**.
+
 ### 개별 도구 (단순 질문 또는 chain 후 보충)
 0. **MST 힌트가 있으면** search_law 생략 → get_batch_articles(mst=힌트값, articles=[...])로 직접 조회.
 1. **조문번호 지정 질문** (예: "국가공무원법 제78조"): search_law로 MST 확인 → get_batch_articles로 해당 조문 직접 조회.
-2. **search_ai_law 우선**: 관련 법령·조문을 모를 때 자연어로 검색.
+2. **search_ai_law 우선**: 관련 법령·조문을 모를 때 자연어로 검색. 첫 도구로 사용.
 3. **search_law**: 법령명을 정확히 알 때 MST 확인용.
 4. **get_batch_articles**: 여러 조문 한번에 조회. articles=["제38조", "제39조"].
 5. **get_law_text(jo 지정)**: 단일 조문 조회. jo 없이 전체를 가져오지 말 것.
