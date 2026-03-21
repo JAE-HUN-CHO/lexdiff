@@ -403,8 +403,8 @@ export async function* executeClaudeRAGStream(
       : ''
 
     if (hasEvidence && complexity === 'simple') {
-      userContent = `${contextPrefix}⚡ 빠른 답변 모드 — 필요한 조문이 이미 수집됨.\n규칙: 아래 데이터만으로 답변 가능하면 추가 도구 호출하지 말 것. 부족한 경우에만 최소한의 추가 도구 사용.\n\n[사전 수집된 법령 데이터]\n${collectedEvidence}\n\n${query}`
-      maxTurns = 3
+      userContent = `${contextPrefix}⚡ 빠른 답변 모드 — 관련 조문이 사전 수집됨.\n규칙:\n1. 아래 데이터만으로 답변 가능하면 추가 도구 호출 없이 즉시 답변.\n2. 부족하면 추가 도구를 호출하여 보충 후 답변.\n3. **절대 "추가 조회가 필요합니다"만으로 끝내지 말 것** — 반드시 실질적 답변을 포함해야 함.\n\n[사전 수집된 법령 데이터]\n${collectedEvidence}\n\n${query}`
+      maxTurns = 5
     } else if (hasEvidence) {
       userContent = `${contextPrefix}📋 사전 검색 결과가 아래에 있음. 이를 참고하되, 부족한 부분은 추가 도구를 적극 호출하여 충분하고 상세한 답변을 생성할 것.\n\n[사전 검색 결과]\n${collectedEvidence}\n\n${query}`
       maxTurns = getMaxClaudeTurns(complexity)
@@ -454,6 +454,15 @@ export async function* executeClaudeRAGStream(
         const answer = event.text?.trim()
         if (!answer || answer.length < 10) {
           throw new Error('Claude 응답이 비어있습니다.')
+        }
+
+        // 메타 답변 감지: 실질 내용 없는 짧은 응답 → 에러로 전환하여 Gemini 폴백 유도
+        // 1) 100자 미만은 무조건 메타 답변 (실질적 법률 답변은 최소 100자 이상)
+        // 2) 150자 미만 + "추가 조회/확인하겠" 패턴
+        const isMetaAnswer = answer.length < 100 ||
+          (answer.length < 150 && /추가\s*조회|추가.*필요|부족|확인되지\s*않|수집.*없|확인하겠|조회하겠|검색하겠/.test(answer))
+        if (isMetaAnswer) {
+          throw new Error(`메타 답변 감지 (${answer.length}ch) — 실질 답변 없음`)
         }
 
         yield {
