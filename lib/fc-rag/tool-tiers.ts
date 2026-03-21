@@ -69,10 +69,13 @@ export function detectDomain(query: string): LegalDomain {
   }
 
   if (/관세|수입|수출|통관|hs코드|원산지|fta|보세/.test(src)) return 'customs'
-  if (/근로|임금|해고|퇴직금|최저임금|산재|산업재해|고용보험|연차|수당|휴가/.test(src)) return 'labor'
   if (/개인정보|정보주체|개인정보처리자/.test(src)) return 'privacy'
   if (/세금|납세|과세|세율|법인세|소득세|부가가치세/.test(src)) return 'tax'
+  // 공무원을 labor보다 먼저 — "공무원 수당", "경찰공무원 휴가" 등이 labor로 오분류되는 것 방지
   if (/공무원|겸직|복무|복무규정|행동강령|자문료|사례금|공직자|징계/.test(src)) return 'public_servant'
+  if (/근로|임금|해고|퇴직금|최저임금|산재|산업재해|고용보험|연차/.test(src)) return 'labor'
+  // "수당", "휴가"는 공무원/근로 양쪽에 걸림 — 위에서 공무원 우선 매칭 후 여기로 fall-through
+  if (/수당|휴가/.test(src) && /근로자|노동|직장|회사|사업장/.test(src)) return 'labor'
   if (/행정|허가|처분|이의신청|행정심판|행정소송|정보공개|민원|계약|보조금|조달|입찰/.test(src)) return 'admin'
   if (/여권|주민등록|인감|가족관계|출생신고|사망신고|혼인신고|운전면허/.test(src)) return 'civil_service'
   if (/주택|임대차|공동주택|아파트|관리비|층간소음|전세|월세/.test(src)) return 'housing'

@@ -32,7 +32,7 @@ function convertForVerification(fcCitations: FCRAGCitation[]): {
   const skipped: VerifiedCitation[] = []
 
   for (const citation of fcCitations) {
-    if (/^제?\d+조(?:의\d+)?/.test(citation.articleNumber)) {
+    if (/^제?\d+조(?:의\d+)?(?:의\d+)?/.test(citation.articleNumber)) {
       verifiable.push({
         lawName: citation.lawName,
         articleNum: citation.articleNumber,
@@ -262,6 +262,7 @@ export async function POST(request: NextRequest) {
             apiKey: userApiKey,
             signal: request.signal,
             conversationId,
+            preEvidence,
           })) {
             if (event.type === "answer") {
               geminiAnswerSent = true

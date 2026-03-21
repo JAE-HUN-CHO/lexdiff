@@ -23,6 +23,7 @@ import { KNOWN_MST, cacheMSTEntries, detectFastPath, parseLawEntries, findBestMS
 import { buildCitations, calcConfidence, parseCitationsFromAnswer } from './citations'
 import { summarizeToolResult, getToolCallQuery, correctToolArgs, rerankAiSearchResult } from './result-utils'
 import { callAnthropicStream, type DirectMessage } from './anthropic-client'
+import { evaluateResponseQuality } from './quality-evaluator'
 
 type QueryComplexity = 'simple' | 'moderate' | 'complex'
 
@@ -357,17 +358,7 @@ export async function* executeClaudeRAGStream(
     const message = error instanceof Error ? error.message : String(error)
     warnings.push(`Claude 오류: ${message}`)
     yield { type: 'error', message }
-    yield {
-      type: 'answer',
-      data: {
-        answer: '죄송합니다. 답변을 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.',
-        citations: [],
-        confidenceLevel: 'low',
-        complexity,
-        queryType,
-        warnings,
-      },
-    }
+    // route.ts가 claudeHadError 시 answer를 삼키고 Gemini 폴백하므로, 여기서 answer를 보내지 않음
   }
 }
 
@@ -381,7 +372,7 @@ export async function* executeGeminiRAGStream(
   query: string,
   options?: RAGStreamOptions
 ): AsyncGenerator<FCRAGStreamEvent> {
-  const { apiKey: geminiApiKey, signal } = options || {}
+  const { apiKey: geminiApiKey, signal, preEvidence } = options || {}
   const warnings: string[] = []
   const complexity = inferComplexity(query)
   const queryType = inferQueryType(query)
@@ -390,14 +381,17 @@ export async function* executeGeminiRAGStream(
 
   yield { type: 'status', message: `질문 분석 완료 (${complexityLabel})`, progress: 8 }
 
-  // ── Fast Path ──
-  const fastPathGen = handleFastPath(query, queryType, signal)
-  let fastPathNext = await fastPathGen.next()
-  while (!fastPathNext.done) {
-    yield fastPathNext.value
-    fastPathNext = await fastPathGen.next()
+  // ── preEvidence 있으면 fast-path 스킵 ──
+  if (!preEvidence) {
+    // ── Fast Path ──
+    const fastPathGen = handleFastPath(query, queryType, signal)
+    let fastPathNext = await fastPathGen.next()
+    while (!fastPathNext.done) {
+      yield fastPathNext.value
+      fastPathNext = await fastPathGen.next()
+    }
+    if (fastPathNext.value === true) return
   }
-  if (fastPathNext.value === true) return
 
   // ── Full Pipeline: Gemini 멀티턴 ──
   const effectiveKey = geminiApiKey || process.env.GEMINI_API_KEY
@@ -422,9 +416,14 @@ export async function* executeGeminiRAGStream(
   const selectedTools = new Set(selectToolsForQuery(query))
   const toolDeclarations = getToolDeclarations().filter(d => selectedTools.has(d.name!))
 
+  // preEvidence: 이미 수집된 조문으로 즉답 (도구 호출 불필요)
+  const userText = preEvidence
+    ? `⚡ 빠른 답변 모드 — 필요한 조문이 이미 수집됨.\n규칙: 도구를 일절 호출하지 말 것. 아래 조문 데이터만으로 즉시 답변.\n\n[사전 수집된 법령 조문]\n${preEvidence}\n\n${query}`
+    : query
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const messages: Array<{ role: 'user' | 'model'; parts: any[] }> = [
-    { role: 'user', parts: [{ text: query }] },
+    { role: 'user', parts: [{ text: userText }] },
   ]
 
   let allToolResults: ToolCallResult[] = []
@@ -436,6 +435,7 @@ export async function* executeGeminiRAGStream(
   let totalOutputTokens = 0
   // Chain 도구가 호출되면 커버하는 TIER_0 도구를 이후 턴에서 제외
   const chainCoveredTools = new Set<string>()
+  let geminiAnswerYielded = false  // 루프 내에서 answer를 yield했는지 추적
 
   // 프로그레스: 8% → 88% 범위를 턴 수에 따라 분배
   const progressRange = 80
@@ -493,16 +493,22 @@ export async function* executeGeminiRAGStream(
       const parts = candidate.content.parts
       const functionCalls = parts.filter((p: GeminiPart) => p.functionCall)
 
-      // 텍스트 답변 (도구 호출 없음) → 완료
+      // 텍스트 답변 (도구 호출 없음) → 품질 평가 후 완료
       if (functionCalls.length === 0) {
         const answer = parts.filter((p: GeminiPart) => p.text).map((p: GeminiPart) => p.text).join('')
+        // 품질 평가 (Gemini 할루시네이션 감지)
+        const quality = evaluateResponseQuality(allToolResults, answer)
+        if (quality.warnings.length > 0) warnings.push(...quality.warnings)
+        const confidence = quality.level === 'fail' ? 'low' as const
+          : quality.level === 'marginal' ? 'medium' as const
+          : calcConfidence(allToolResults)
         yield { type: 'status', message: '답변을 정리하고 있습니다...', progress: 92 }
         yield {
           type: 'answer',
           data: {
             answer,
             citations: buildCitations(allToolResults, answer),
-            confidenceLevel: calcConfidence(allToolResults),
+            confidenceLevel: confidence,
             complexity,
             queryType,
             isTruncated: candidate.finishReason === 'MAX_TOKENS',
@@ -692,7 +698,7 @@ export async function* executeGeminiRAGStream(
           (r.name === 'search_ai_law' || r.name === 'get_batch_articles' || r.name === 'get_law_text') && !r.isError
         )
         for (const src of annexSources) {
-          const annexMatch = src.result.match(/별표\s*(\d+)/)
+          const annexMatch = src.result.match(/(?:별표|부표|별지)\s*(?:제?\s*)?(\d+)/)
           if (annexMatch) {
             const lawNameMatch = src.result.match(/(?:📜\s+|법령명:\s*)(.+?)(?:\n|$)/)
             const lawName = lawNameMatch?.[1]?.trim()
@@ -779,21 +785,12 @@ export async function* executeGeminiRAGStream(
     }
   }
 
-  // 루프 종료 (에러/예외)
+  // 루프 종료 (에러/예외) — route.ts의 geminiAnswerSent 안전장치와 중복 방지
   if (turnCount > maxToolTurns) {
     warnings.push('도구 호출 횟수 제한에 도달했습니다.')
   }
-  yield {
-    type: 'answer',
-    data: {
-      answer: '죄송합니다. 답변을 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.',
-      citations: buildCitations(allToolResults),
-      confidenceLevel: 'low',
-      complexity,
-      queryType,
-      warnings: warnings.length > 0 ? warnings : undefined,
-    },
-  }
+  // route.ts가 geminiAnswerSent=false 시 별도 안전장치 answer를 보내므로,
+  // 여기서는 error 이벤트만 보내고 answer는 route.ts에 위임
 }
 
 // ─── 하위 호환 래퍼 ───
@@ -834,10 +831,20 @@ function inferComplexity(query: string): QueryComplexity {
   const complexPatterns = /(?:하고|와\s*함께|판례|전후\s*비교|비교해|변경.{0,5}판례|개정.{0,5}판례)/
   const moderatePatterns = /(?:위임|시행령|시행규칙|해석례|유권해석|이력|변경|개정|바뀐|신구|대조|절차|방법)/
 
-  if (lawMatches.length > 1 || articleMatches.length > 2 || query.length > 100 || complexPatterns.test(query)) {
+  // 요구 자료 종류 수: 판례+해석례+조문+별표 등 다양한 자료 요구 시 complex
+  const sourceTypes = [
+    /판례|판결/.test(query),
+    /해석례|유권해석|질의회신/.test(query),
+    /별표|서식|부표/.test(query),
+    /조례|자치법규/.test(query),
+    /비교|대조|신구/.test(query),
+  ].filter(Boolean).length
+
+  if (lawMatches.length > 1 || articleMatches.length > 2 || query.length > 100
+    || complexPatterns.test(query) || sourceTypes >= 2) {
     return 'complex'
   }
-  if (query.length > 50 || articleMatches.length > 0 || moderatePatterns.test(query)) {
+  if (query.length > 50 || articleMatches.length > 0 || moderatePatterns.test(query) || sourceTypes >= 1) {
     return 'moderate'
   }
   return 'simple'

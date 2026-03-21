@@ -125,8 +125,8 @@ function LawViewerComponent({
   const { toast } = useToast()
 
 
-  const actualArticles = articles.filter((a) => !a.isPreamble)
-  const preambles = articles.filter((a) => a.isPreamble)
+  const actualArticles = useMemo(() => articles.filter((a) => !a.isPreamble), [articles])
+  const preambles = useMemo(() => articles.filter((a) => a.isPreamble), [articles])
 
   // State for dynamically loaded articles
   const [loadedArticles, setLoadedArticles] = useState<LawArticle[]>(actualArticles)

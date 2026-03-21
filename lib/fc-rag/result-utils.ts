@@ -246,12 +246,13 @@ export function rerankAiSearchResult(text: string, query: string): string {
   if (blocks.length <= 1) return text  // 1건 이하면 재정렬 불필요
 
   // 쿼리에서 키워드 추출 (불용어 제거)
-  const stopWords = /(?:은|는|이|가|을|를|에|의|로|으로|와|과|에서|한|하는|대한|대해|무엇|어떤|어떻게|인가요|인지|것|및|또는|경우|위한|있는|없는|되는|되어|알려|설명|궁금|내용|관련|해서|해|줘)$/
+  const suffixStopWords = /(?:은|는|이|가|을|를|에|의|로|으로|와|과|에서|한|하는|대한|대해|인가요|인지|위한|있는|없는|되는|되어|해서|해|줘)$/
+  const wholeStopWords = new Set(['무엇', '어떤', '어떻게', '것', '및', '또는', '경우', '알려', '설명', '궁금', '내용', '관련'])
   const keywords = query
     .replace(/[「」]/g, '')
     .split(/\s+/)
-    .map(w => w.replace(stopWords, ''))
-    .filter(w => w.length >= 2)
+    .map(w => w.replace(suffixStopWords, ''))
+    .filter(w => w.length >= 2 && !wholeStopWords.has(w))
 
   // 쿼리에서 조문번호 추출
   const queryArticles = new Set(

@@ -178,6 +178,7 @@ function processSSEEvent(
             confidenceLevel: parsed.confidenceLevel || 'medium',
             complexity: parsed.complexity || 'moderate',
             queryType: (parsed.queryType || 'definition') as LegalQueryType,
+            isTruncated: !!parsed.isTruncated,
             warnings: parsed.warnings,
           } satisfies FCRAGResult,
         })

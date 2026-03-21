@@ -219,6 +219,7 @@ export async function* callAnthropicStream(
   // tool_use id → 도구명 매핑 (tool_result에서 이름 역추적용)
   const toolNameMap = new Map<string, string>()
   let finalText = ''
+  let prevTextLen = 0  // --include-partial-messages: snapshot→delta 변환용
 
   const rl = createInterface({ input: proc.stdout! })
 
@@ -250,7 +251,12 @@ export async function* callAnthropicStream(
           yield { type: 'tool_call', name, input: (block.input || {}) as Record<string, unknown> }
         } else if (block.type === 'text' && typeof block.text === 'string' && block.text.length > 0) {
           finalText = block.text
-          yield { type: 'text', text: block.text }
+          // --include-partial-messages: 매 이벤트가 누적 snapshot이므로 delta만 yield
+          const delta = block.text.slice(prevTextLen)
+          if (delta) {
+            prevTextLen = block.text.length
+            yield { type: 'text', text: delta }
+          }
         }
       }
     }

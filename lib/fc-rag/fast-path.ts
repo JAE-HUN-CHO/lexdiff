@@ -98,12 +98,14 @@ interface OrdinEntry { seq: string; name: string }
 
 // ─── KNOWN_MST 캐시 관리 ───
 
-/** search_law 결과를 KNOWN_MST에 저장 */
+/** search_law 결과를 KNOWN_MST에 저장 (LRU: 접근 시 재삽입으로 최신화) */
 export function cacheMSTEntries(entries: LawEntry[]) {
   for (const e of entries) {
     if (e.name && e.mst) {
+      // LRU: 이미 있으면 삭제 후 재삽입 (Map 순서가 최신으로 이동)
+      if (KNOWN_MST.has(e.name)) KNOWN_MST.delete(e.name)
       if (KNOWN_MST.size >= KNOWN_MST_MAX) {
-        // FIFO: 가장 오래된 엔트리 제거
+        // 가장 오래 접근 안 된 엔트리 제거
         const firstKey = KNOWN_MST.keys().next().value
         if (firstKey) KNOWN_MST.delete(firstKey)
       }

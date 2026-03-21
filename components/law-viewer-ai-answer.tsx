@@ -888,8 +888,8 @@ export function AIAnswerContent({
                     </>
                 )}
 
-                {/* 답변 내용 렌더링 - 타이핑 효과 */}
-                {displayedContent && !isStreaming && (
+                {/* 답변 내용 렌더링 - 스트리밍 중에도 answer_token 실시간 표시 */}
+                {displayedContent && (
                     <div
                         style={{ fontSize: `${fontSize}px` }}
                         className="animate-in fade-in duration-200"

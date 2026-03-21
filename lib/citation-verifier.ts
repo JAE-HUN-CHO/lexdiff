@@ -106,12 +106,27 @@ export async function verifyCitation(citation: Citation): Promise<VerifiedCitati
 export async function verifyAllCitations(
   citations: Citation[]
 ): Promise<VerifiedCitation[]> {
-  // 병렬 검증 (Promise.all)
-  const verifiedCitations = await Promise.all(
-    citations.map(c => verifyCitation(c))
-  )
-
-  return verifiedCitations
+  // 법제처 API rate limit 고려: 동시 3건씩 배치 검증
+  const BATCH_SIZE = 3
+  const results: VerifiedCitation[] = []
+  for (let i = 0; i < citations.length; i += BATCH_SIZE) {
+    const batch = citations.slice(i, i + BATCH_SIZE)
+    const batchResults = await Promise.allSettled(batch.map(c => verifyCitation(c)))
+    for (const r of batchResults) {
+      if (r.status === 'fulfilled') {
+        results.push(r.value)
+      } else {
+        // 개별 검증 실패는 전체를 중단하지 않고 error로 기록
+        results.push({
+          ...batch[batchResults.indexOf(r)],
+          verified: false,
+          verificationMethod: 'error',
+          verificationError: r.reason?.message || 'unknown error',
+        })
+      }
+    }
+  }
+  return results
 }
 
 /**

@@ -14,9 +14,11 @@ function extractContextualArticles(text: string): Set<string> {
   const articles = new Set<string>()
 
   // 텍스트를 순서대로 스캔하며 조문 번호 수집 (법령명 관계없이 모든 제N조 매칭)
-  const patterns = /(?:「[^」]+」\s*)?(?:이\s*법|같은\s*법|동법|본법)?\s*제(\d+)조(?:의(\d+))?/g
+  const patterns = /(?:「[^」]+」\s*)?(?:이\s*법|같은\s*법|동법|본법)?\s*제(\d+)조(?:의(\d+))?(?:의(\d+))?/g
   for (const m of text.matchAll(patterns)) {
-    const articleNum = m[2] ? `제${m[1]}조의${m[2]}` : `제${m[1]}조`
+    const articleNum = m[3] ? `제${m[1]}조의${m[2]}의${m[3]}`
+      : m[2] ? `제${m[1]}조의${m[2]}`
+      : `제${m[1]}조`
     articles.add(articleNum)
   }
 
@@ -43,8 +45,10 @@ export function buildCitations(toolResults: ToolCallResult[], answerText?: strin
       const lawNameMatch = text.match(/(?:##\s+|법령명:\s*)(.+?)(?:\n|$)/)
       const lawName = lawNameMatch?.[1]?.trim() || ''
 
-      for (const match of Array.from(text.matchAll(/제(\d+)조(?:의(\d+))?(?:\(([^)]+)\))?/g))) {
-        const articleNum = match[2] ? `제${match[1]}조의${match[2]}` : `제${match[1]}조`
+      for (const match of Array.from(text.matchAll(/제(\d+)조(?:의(\d+))?(?:의(\d+))?(?:\(([^)]+)\))?/g))) {
+        const articleNum = match[3] ? `제${match[1]}조의${match[2]}의${match[3]}`
+          : match[2] ? `제${match[1]}조의${match[2]}`
+          : `제${match[1]}조`
         if (mentionedArticles && !mentionedArticles.has(articleNum)) continue
 
         const key = `${lawName}:${articleNum}`
@@ -59,9 +63,11 @@ export function buildCitations(toolResults: ToolCallResult[], answerText?: strin
 
     if (result.name === 'search_ai_law') {
       // search_ai_law 결과에서 법령명 + 조문번호 추출
-      for (const match of Array.from(text.matchAll(/📜\s+(.+)\n\s+제(\d+)조(?:의(\d+))?/g))) {
+      for (const match of Array.from(text.matchAll(/📜\s+(.+)\n\s+제(\d+)조(?:의(\d+))?(?:의(\d+))?/g))) {
         const lawName = match[1].trim()
-        const articleNum = match[3] ? `제${match[2]}조의${match[3]}` : `제${match[2]}조`
+        const articleNum = match[4] ? `제${match[2]}조의${match[3]}의${match[4]}`
+          : match[3] ? `제${match[2]}조의${match[3]}`
+          : `제${match[2]}조`
         const key = `ai:${lawName}:${articleNum}`
         if (!seen.has(key)) {
           seen.add(key)
@@ -191,8 +197,10 @@ export function buildCitations(toolResults: ToolCallResult[], answerText?: strin
     // get_article_with_precedents — 법령 조문 + 판례 모두 추출
     if (result.name === 'get_article_with_precedents') {
       const awpLawName = text.match(/법령명: (.+?)\n/)?.[1]?.trim() || ''
-      for (const match of Array.from(text.matchAll(/제(\d+)조(?:의(\d+))?/g))) {
-        const articleNum = match[2] ? `제${match[1]}조의${match[2]}` : `제${match[1]}조`
+      for (const match of Array.from(text.matchAll(/제(\d+)조(?:의(\d+))?(?:의(\d+))?/g))) {
+        const articleNum = match[3] ? `제${match[1]}조의${match[2]}의${match[3]}`
+          : match[2] ? `제${match[1]}조의${match[2]}`
+          : `제${match[1]}조`
         const key = `awp:${awpLawName}:${articleNum}`
         if (!seen.has(key)) {
           seen.add(key)
@@ -230,8 +238,10 @@ export function buildCitations(toolResults: ToolCallResult[], answerText?: strin
 
 export function calcConfidence(toolResults: ToolCallResult[]): 'high' | 'medium' | 'low' {
   const successful = toolResults.filter(r => !r.isError)
-  if (successful.length >= 3) return 'high'
-  if (successful.length >= 1) return 'medium'
+  // 성공 도구 수 + 실질적 결과 길이로 판단 (빈 결과는 실질 기여 없음)
+  const substantive = successful.filter(r => r.result.length > 100)
+  if (substantive.length >= 3) return 'high'
+  if (substantive.length >= 1 || successful.length >= 2) return 'medium'
   return 'low'
 }
 
@@ -244,10 +254,12 @@ export function parseCitationsFromAnswer(answer: string): FCRAGCitation[] {
   const seen = new Set<string>()
 
   // 「법령명」 제N조 패턴
-  const lawArticlePattern = /「([^」]+)」\s*제(\d+)조(?:의(\d+))?/g
+  const lawArticlePattern = /「([^」]+)」\s*제(\d+)조(?:의(\d+))?(?:의(\d+))?/g
   for (const m of answer.matchAll(lawArticlePattern)) {
     const lawName = m[1]
-    const articleNum = m[3] ? `제${m[2]}조의${m[3]}` : `제${m[2]}조`
+    const articleNum = m[4] ? `제${m[2]}조의${m[3]}의${m[4]}`
+      : m[3] ? `제${m[2]}조의${m[3]}`
+      : `제${m[2]}조`
     const key = `${lawName}:${articleNum}`
     if (!seen.has(key)) {
       seen.add(key)
