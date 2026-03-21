@@ -57,14 +57,11 @@ async function openDB(): Promise<IDBDatabase> {
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result
 
-      console.log(`📦 LawHistoryCache DB upgrade needed: v${event.oldVersion} → v${DB_VERSION}`)
-
       // 연혁 목록 캐시 스토어
       if (!db.objectStoreNames.contains(HISTORY_STORE)) {
         const historyStore = db.createObjectStore(HISTORY_STORE, { keyPath: "key" })
         historyStore.createIndex("timestamp", "timestamp", { unique: false })
         historyStore.createIndex("lawName", "lawName", { unique: false })
-        console.log(`✅ Created ${HISTORY_STORE}`)
       }
 
       // 구법령 조문 캐시 스토어
@@ -72,7 +69,6 @@ async function openDB(): Promise<IDBDatabase> {
         const oldLawStore = db.createObjectStore(OLD_LAW_STORE, { keyPath: "key" })
         oldLawStore.createIndex("timestamp", "timestamp", { unique: false })
         oldLawStore.createIndex("mst", "mst", { unique: false })
-        console.log(`✅ Created ${OLD_LAW_STORE}`)
       }
     }
   })
@@ -103,8 +99,6 @@ async function cleanExpiredHistoryCache(): Promise<void> {
         cursor.delete()
         deletedCount++
         cursor.continue()
-      } else if (deletedCount > 0) {
-        console.log(`🗑️ Cleaned ${deletedCount} expired law history cache entries`)
       }
     }
 
@@ -154,8 +148,6 @@ export async function setLawHistoryCache(
 
     db.close()
 
-    console.log(`✅ 연혁 캐시 저장: ${lawName} (${histories.length}개 버전)`)
-
     // 백그라운드로 만료된 캐시 정리
     cleanExpiredHistoryCache().catch(console.error)
   } catch (error) {
@@ -190,18 +182,15 @@ export async function getLawHistoryCache(
     db.close()
 
     if (!entry) {
-      console.log(`❌ 연혁 캐시 MISS: ${lawName}`)
       return null
     }
 
     // 만료 체크
     const expiryTime = Date.now() - HISTORY_CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
     if (entry.timestamp < expiryTime) {
-      console.log(`⏰ 연혁 캐시 만료: ${lawName}`)
       return null
     }
 
-    console.log(`✅ 연혁 캐시 HIT: ${lawName} (${entry.histories.length}개 버전)`)
     return entry
   } catch (error) {
     console.error("❌ 연혁 캐시 조회 실패:", error)
@@ -246,8 +235,6 @@ export async function setOldLawContentCache(
     })
 
     db.close()
-
-    console.log(`✅ 구법령 캐시 저장: MST=${mst} (${historyInfo.lawNm})`)
   } catch (error) {
     console.error("❌ 구법령 캐시 저장 실패:", error)
   }
@@ -280,11 +267,9 @@ export async function getOldLawContentCache(
     db.close()
 
     if (!entry) {
-      console.log(`❌ 구법령 캐시 MISS: MST=${mst}`)
       return null
     }
 
-    console.log(`✅ 구법령 캐시 HIT: MST=${mst} (${entry.historyInfo.lawNm})`)
     return entry
   } catch (error) {
     console.error("❌ 구법령 캐시 조회 실패:", error)

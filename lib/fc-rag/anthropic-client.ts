@@ -12,10 +12,8 @@ import { createInterface } from 'readline'
 
 export const CLAUDE_MODEL = 'claude-sonnet-4-6'
 
-// Windows 8.3 짧은 경로 사용 (공백 회피)
-const CLAUDE_BIN = process.platform === 'win32'
-  ? 'C:/Users/MONGNA~1/LOCAL~1/bin/claude.exe'
-  : 'claude'
+// 환경변수 우선, 미설정 시 PATH에서 탐색
+const CLAUDE_BIN = process.env.CLAUDE_CLI_PATH || 'claude'
 
 export interface DirectMessage {
   role: 'user' | 'assistant'

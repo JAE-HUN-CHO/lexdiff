@@ -92,7 +92,6 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
   const loadRevisionHistory = async () => {
     // targetJo가 없으면 조문별 개정이력을 불러올 수 없음
     if (!targetJo) {
-      console.log('[ComparisonModal] targetJo가 없어 개정이력을 불러올 수 없습니다')
       setArticleHistory([])
       return
     }
@@ -111,7 +110,7 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
       const response = await fetch(`/api/article-history?${params.toString()}`)
 
       if (!response.ok) {
-        console.warn('[ComparisonModal] 조문별 개정이력 조회 실패:', response.status)
+        console.error('[ComparisonModal] 조문별 개정이력 조회 실패:', response.status)
         setArticleHistory([])
         return
       }
@@ -122,7 +121,7 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
       setArticleHistory(history)
       debugLogger.success("조문별 개정이력 조회 완료", { count: history.length, history })
     } catch (err) {
-      console.warn('[ComparisonModal] 조문별 개정이력 조회 오류:', err)
+      console.error('[ComparisonModal] 조문별 개정이력 조회 오류:', err)
       debugLogger.error("조문별 개정이력 조회 실패", err)
       setArticleHistory([])
     }

@@ -70,11 +70,8 @@ async function openDB(): Promise<IDBDatabase> {
       const db = (event.target as IDBOpenDBRequest).result
       const oldVersion = event.oldVersion
 
-      console.log(`[admin-rule-cache] Upgrade v${oldVersion} → v${DB_VERSION}`)
-
       // 기존 스토어 모두 삭제 (스키마 충돌 방지)
       Array.from(db.objectStoreNames).forEach((storeName) => {
-        console.log(`[admin-rule-cache] Deleting old store: ${storeName}`)
         db.deleteObjectStore(storeName)
       })
 
@@ -82,18 +79,15 @@ async function openDB(): Promise<IDBDatabase> {
       const purposeStore = db.createObjectStore(PURPOSE_STORE, { keyPath: "key" })
       purposeStore.createIndex("timestamp", "timestamp", { unique: false })
       purposeStore.createIndex("lawName", "lawName", { unique: false })
-      console.log(`[admin-rule-cache] Created store: ${PURPOSE_STORE}`)
 
       // 조문별 매칭 인덱스 스토어
       const matchIndexStore = db.createObjectStore(MATCH_INDEX_STORE, { keyPath: "key" })
       matchIndexStore.createIndex("timestamp", "timestamp", { unique: false })
       matchIndexStore.createIndex("lawName", "lawName", { unique: false })
-      console.log(`[admin-rule-cache] Created store: ${MATCH_INDEX_STORE}`)
 
       // 행정규칙 내용 캐시 스토어
       const contentStore = db.createObjectStore(CONTENT_STORE, { keyPath: "key" })
       contentStore.createIndex("timestamp", "timestamp", { unique: false })
-      console.log(`[admin-rule-cache] Created store: ${CONTENT_STORE}`)
     }
   })
 }
@@ -222,7 +216,6 @@ export async function getLawAdminRulesPurposeCache(
         if (entry) {
           // MST 버전 확인
           if (entry.mst !== currentMst) {
-            console.log("[admin-rule-cache] Purpose cache MST mismatch, invalidating")
             resolve(null)
             return
           }
@@ -242,10 +235,8 @@ export async function getLawAdminRulesPurposeCache(
     console.error("[admin-rule-cache] Error reading purpose cache:", error)
 
     if (error?.name === 'NotFoundError') {
-      console.warn('[admin-rule-cache] Object store not found, deleting database...')
       try {
         indexedDB.deleteDatabase(DB_NAME)
-        console.log('[admin-rule-cache] Database deleted, please refresh the page')
       } catch (deleteError) {
         console.error('[admin-rule-cache] Failed to delete database:', deleteError)
       }
@@ -356,7 +347,6 @@ export async function getArticleMatchIndex(
         if (entry) {
           // MST 버전 확인
           if (entry.mst !== currentMst) {
-            console.log("[admin-rule-cache] Match index MST mismatch, invalidating")
             resolve(null)
             return
           }
@@ -376,10 +366,8 @@ export async function getArticleMatchIndex(
     console.error("[admin-rule-cache] Error reading match index:", error)
 
     if (error?.name === 'NotFoundError') {
-      console.warn('[admin-rule-cache] Object store not found, deleting database...')
       try {
         indexedDB.deleteDatabase(DB_NAME)
-        console.log('[admin-rule-cache] Database deleted, please refresh the page')
       } catch (deleteError) {
         console.error('[admin-rule-cache] Failed to delete database:', deleteError)
       }
@@ -470,10 +458,8 @@ export async function getAdminRuleContentCache(
     console.error("[admin-rule-cache] Error reading content cache:", error)
 
     if (error?.name === 'NotFoundError') {
-      console.warn('[admin-rule-cache] Object store not found, deleting database...')
       try {
         indexedDB.deleteDatabase(DB_NAME)
-        console.log('[admin-rule-cache] Database deleted, please refresh the page')
       } catch (deleteError) {
         console.error('[admin-rule-cache] Failed to delete database:', deleteError)
       }

@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/icon"
 import { useToast } from "@/hooks/use-toast"
 import { formatSimpleJo } from "@/lib/law-parser"
 import type { AdminRulesTabProps } from "./types"
+import { sanitizeForRender } from "@/lib/sanitize-html-render"
 
 export function AdminRulesTab({
     showAdminRules,
@@ -111,7 +112,7 @@ export function AdminRulesTab({
                             wordBreak: "break-word",
                         }}
                         onClick={handleContentClick}
-                        dangerouslySetInnerHTML={{ __html: adminRuleHtml }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeForRender(adminRuleHtml) }}
                     />
                 </ScrollArea>
             </>
@@ -151,7 +152,6 @@ export function AdminRulesTab({
                             <button
                                 key={idx}
                                 onClick={() => {
-                                    console.log('[AdminRulesTab] Button clicked:', rule.name, 'ID:', rule.serialNumber || rule.id)
                                     handleViewAdminRuleFullContent(rule)
                                 }}
                                 type="button"

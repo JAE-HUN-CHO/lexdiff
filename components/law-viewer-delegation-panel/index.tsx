@@ -17,6 +17,7 @@ import type { DelegationPanelProps } from "./types"
 import { normalizeDelegationLawName, groupDelegationsByLawName, formatDelegationHeader } from "./utils"
 import { DelegationGroupCard } from "./DelegationGroupCard"
 import { AdminRulesTab } from "./AdminRulesTab"
+import { sanitizeForRender } from "@/lib/sanitize-html-render"
 
 export type { DelegationPanelProps } from "./types"
 
@@ -214,7 +215,7 @@ export function DelegationPanel({
                                 className="text-foreground leading-relaxed break-words whitespace-pre-wrap text-sm font-maruburi"
                                 style={{ fontSize: `${fontSize}px`, lineHeight: "1.8", overflowWrap: "break-word", wordBreak: "break-word" }}
                                 onClick={handleContentClick}
-                                dangerouslySetInnerHTML={{ __html: articleHtml }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeForRender(articleHtml) }}
                             />
                         </div>
                     </TabsContent>
@@ -320,7 +321,7 @@ export function DelegationPanel({
                                     className="text-foreground leading-relaxed break-words whitespace-pre-wrap text-sm font-maruburi"
                                     style={{ fontSize: `${fontSize}px`, lineHeight: "1.8", overflowWrap: "break-word", wordBreak: "break-word" }}
                                     onClick={handleContentClick}
-                                    dangerouslySetInnerHTML={{ __html: adminRuleHtml }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeForRender(adminRuleHtml) }}
                                 />
                             </div>
                         ) : adminRules.length > 0 ? (
@@ -396,7 +397,7 @@ export function DelegationPanel({
                                         className="text-foreground leading-relaxed break-words whitespace-pre-wrap text-sm font-maruburi"
                                         style={{ fontSize: `${fontSize}px`, lineHeight: "1.8", overflowWrap: "break-word", wordBreak: "break-word" }}
                                         onClick={handleContentClick}
-                                        dangerouslySetInnerHTML={{ __html: articleHtml }}
+                                        dangerouslySetInnerHTML={{ __html: sanitizeForRender(articleHtml) }}
                                     />
                                 </div>
                             </div>

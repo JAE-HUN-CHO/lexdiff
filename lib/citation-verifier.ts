@@ -62,8 +62,6 @@ export async function verifyCitation(citation: Citation): Promise<VerifiedCitati
     if (!lawId) {
       // Fallback: 법령명으로 검색
       lawId = await fetchLawId(citation.lawName) ?? undefined
-    } else {
-      console.log(`[Citation Verifier] ✅ Using lawId from citation metadata: ${lawId}`)
     }
 
     if (!lawId) {
@@ -108,17 +106,10 @@ export async function verifyCitation(citation: Citation): Promise<VerifiedCitati
 export async function verifyAllCitations(
   citations: Citation[]
 ): Promise<VerifiedCitation[]> {
-  console.log(`[Citation Verifier] Verifying ${citations.length} citations...`)
-
   // 병렬 검증 (Promise.all)
   const verifiedCitations = await Promise.all(
     citations.map(c => verifyCitation(c))
   )
-
-  const successCount = verifiedCitations.filter(c => c.verified).length
-  const failCount = verifiedCitations.length - successCount
-
-  console.log(`[Citation Verifier] Results: ✅ ${successCount} verified, ❌ ${failCount} failed`)
 
   return verifiedCitations
 }
@@ -157,8 +148,6 @@ async function fetchLawId(lawName: string): Promise<string | null> {
     // 첫 번째 법령 선택 (정확히 일치하는 경우)
     const laws = xmlDoc.getElementsByTagName('law')
 
-    console.log(`[Citation Verifier] 🔍 Searching for "${lawName}", found ${laws.length} results`)
-
     for (let i = 0; i < laws.length; i++) {
       const law = laws[i]
       const nameElement = law.getElementsByTagName('법령명한글')[0]
@@ -171,11 +160,8 @@ async function fetchLawId(lawName: string): Promise<string | null> {
       const foundLawId = lawIdElement.textContent?.trim() // ✅ 법령ID (고유 ID)
       const foundMst = mstElement?.textContent?.trim() // MST (개정 버전 ID)
 
-      console.log(`[Citation Verifier] 📋 Result ${i + 1}: "${foundName}" (법령ID: ${foundLawId}, MST: ${foundMst})`)
-
       // 정확히 일치하는 법령명 찾기
       if (foundName === lawName && foundLawId) {
-        console.log(`[Citation Verifier] ✅ Found exact match: ${foundLawId} for "${lawName}"`)
         return foundLawId
       }
     }
@@ -187,7 +173,6 @@ async function fetchLawId(lawName: string): Promise<string | null> {
       const firstName = firstLaw.getElementsByTagName('법령명한글')[0]?.textContent?.trim()
 
       if (firstLawId) {
-        console.log(`[Citation Verifier] ⚠️  No exact match, using first result: ${firstLawId} for "${firstName}"`)
         return firstLawId
       }
     }
@@ -227,8 +212,6 @@ async function checkArticleExists(
 
     // ✅ lawId는 법령ID이므로 ID 파라미터 사용 (MST 아님!)
     const url = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_OC}&target=law&type=JSON&ID=${lawId}`
-    console.log(`[Citation Verifier] 🔍 Fetching articles for law ID: ${lawId}`)
-
     const response = await fetch(url, {
       next: { revalidate: 3600 } // 1시간 캐시
     })
@@ -250,7 +233,6 @@ async function checkArticleExists(
 
     // ✅ 올바른 구조: lawData.조문.조문단위[] (law-json-parser.ts와 동일)
     const articleUnits = lawData.조문?.조문단위 || []
-    console.log(`[Citation Verifier] 📋 Total articles in law: ${articleUnits.length}`)
 
     if (articleUnits.length === 0) {
       console.warn('[Citation Verifier] ⚠️  No article units found')
@@ -259,15 +241,6 @@ async function checkArticleExists(
 
     // 조문 번호를 JO Code로 변환 (예: "제38조" → "003800")
     const targetJoCode = buildJO(articleNum)
-
-    // 첫 5개 조문의 조문번호 출력 (디버깅용)
-    console.log(`[Citation Verifier] 📝 Sample article codes (first 5):`,
-      articleUnits.slice(0, 5).map((unit: any) => ({
-        조문번호: unit.조문번호,
-        조문여부: unit.조문여부,
-        조문제목: unit.조문제목?.substring(0, 30)
-      }))
-    )
 
     // 조문 목록에서 일치하는 조문 찾기
     const found = articleUnits.some((unit: any) => {
@@ -283,7 +256,6 @@ async function checkArticleExists(
 
       // JO Code 비교
       if (articleJoCode === targetJoCode) {
-        console.log(`[Citation Verifier] ✅ Found article: ${unit.조문번호} (JO: ${targetJoCode})`)
         return true
       }
 

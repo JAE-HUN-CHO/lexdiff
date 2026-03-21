@@ -414,38 +414,26 @@ function SearchResultViewComponent({
         onSearch={(query) => {
           // ✅ 통합검색: searchType에 따라 분기
           if (query.classification) {
-            console.log('[통합검색 분기] searchType:', query.classification.searchType, 'query:', query)
-
             switch (query.classification.searchType) {
               case 'precedent':
-                console.log('[통합검색] → handlePrecedentSearch')
                 handlers.handlePrecedentSearch(query)
                 break
               case 'interpretation':
-                console.log('[통합검색] → handleInterpretationSearch')
                 handlers.handleInterpretationSearch(query)
                 break
               case 'ruling':
-                console.log('[통합검색] → handleRulingSearch')
                 handlers.handleRulingSearch(query)
                 break
               case 'ai':
-                console.log('[통합검색] → handleSearch (AI 모드)')
-                // AI 검색은 기존 handleSearch로 처리
                 handlers.handleSearch(query)
                 break
               case 'multi':
-                console.log('[통합검색] → handleMultiSearch')
                 handlers.handleMultiSearch(query)
                 break
               default:
-                console.log('[통합검색] → handleSearch (법령/조례)')
-                // law, ordinance는 기존 handleSearch로 처리
                 handlers.handleSearch(query)
             }
           } else {
-            console.log('[통합검색] classification 없음 → handleSearch (Fallback)')
-            // Fallback: classification 없으면 기존 로직
             handlers.handleSearch(query)
           }
         }}

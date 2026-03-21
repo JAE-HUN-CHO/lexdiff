@@ -11,6 +11,7 @@ import { extractArticleText } from "@/lib/law-xml-parser"
 import { formatJO } from "@/lib/law-parser"
 import { favoritesStore } from "@/lib/favorites-store"
 import { cn } from "@/lib/utils"
+import { sanitizeForRender } from "@/lib/sanitize-html-render"
 
 // ✅ 성능 최적화: 컴포넌트를 외부로 이동 (매번 재생성 방지)
 const ArticleContent = React.memo(function ArticleContent({
@@ -230,59 +231,26 @@ export const VirtualizedFullArticleView = React.memo(function VirtualizedFullArt
     // preambles 개수만큼 오프셋 추가
     const itemIndex = preambles.length + articleIndex
 
-    console.log('[VirtualizedFullArticleView] Scroll to:', {
-      activeJo,
-      articleIndex,
-      itemIndex,
-      totalItems: allItems.length
-    })
-
     // 스크롤 실행
     const performScroll = () => {
       const scrollElement = getScrollElement()
-      if (!scrollElement) {
-        console.log('[VirtualizedFullArticleView] No scroll element!')
-        return
-      }
-
-      console.log('[VirtualizedFullArticleView] scrollElement:', {
-        scrollTop: scrollElement.scrollTop,
-        scrollHeight: scrollElement.scrollHeight,
-        clientHeight: scrollElement.clientHeight
-      })
+      if (!scrollElement) return
 
       // ✅ virtualizer가 측정한 실제 위치 사용
       const allVirtualItems = virtualizer.getVirtualItems()
       const targetVirtualItem = allVirtualItems.find(item => item.index === itemIndex)
 
-      console.log('[VirtualizedFullArticleView] Virtual items:', {
-        totalVirtualItems: allVirtualItems.length,
-        targetFound: !!targetVirtualItem,
-        targetStart: targetVirtualItem?.start,
-        firstItem: allVirtualItems[0]?.index,
-        lastItem: allVirtualItems[allVirtualItems.length - 1]?.index
-      })
-
       if (targetVirtualItem) {
         // 이미 렌더링되어 있으면 정확한 위치 사용
-        console.log('[VirtualizedFullArticleView] Scrolling to targetVirtualItem.start:', targetVirtualItem.start)
         scrollElement.scrollTop = targetVirtualItem.start
       } else {
         // 아직 렌더링 안 되었으면 virtualizer에게 스크롤 요청
         // ⚠️ flushSync 에러 방지: setTimeout으로 완전히 다음 태스크로 분리
-        console.log('[VirtualizedFullArticleView] Using virtualizer.scrollToIndex:', itemIndex)
         setTimeout(() => {
           virtualizer.scrollToIndex(itemIndex, { align: 'start' })
         }, 0)
       }
 
-      // 스크롤 후 확인
-      setTimeout(() => {
-        const currentScrollElement = getScrollElement()
-        console.log('[VirtualizedFullArticleView] After scroll:', {
-          scrollTop: currentScrollElement?.scrollTop
-        })
-      }, 100)
     }
 
     // ⚠️ flushSync 에러 방지: setTimeout으로 렌더링 완료 후 스크롤
@@ -323,7 +291,7 @@ export const VirtualizedFullArticleView = React.memo(function VirtualizedFullArt
                 // Preamble rendering
                 <div
                   className="mb-8 text-xl font-bold text-center"
-                  dangerouslySetInnerHTML={{ __html: item.content.content }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeForRender(item.content.content) }}
                 />
               ) : isPrecedent ? (
                 // ✅ 판례 전용 렌더링 - 컴팩트 스타일
@@ -368,19 +336,21 @@ export const VirtualizedFullArticleView = React.memo(function VirtualizedFullArt
                     }}
                     onClick={onContentClick}
                     dangerouslySetInnerHTML={{
-                      __html: (item.article.content || '')
-                        .replace(/<br\\>/g, '<br />')  // <br\> → <br />
-                        .replace(/<br>/g, '<br />')    // <br> → <br />
-                        .replace(/\n/g, '<br />')      // 줄바꿈 → <br />
-                        .replace(/&nbsp;/g, ' ')       // &nbsp; → 공백
-                        // 【】 뒤의 연속 공백을 탭 하나로 정리
-                        .replace(/【([^】]*)】\s{2,}/g, '【$1】\t')
-                        // 연속된 빈줄 제거 (br 사이 공백 포함)
-                        .replace(/(<br\s*\/?>\s*){2,}/gi, '<br />')
-                        // 시작/끝 빈줄 제거
-                        .replace(/^(\s*<br\s*\/?>\s*)+/gi, '')
-                        .replace(/(\s*<br\s*\/?>\s*)+$/gi, '')
-                        .trim()
+                      __html: sanitizeForRender(
+                        (item.article.content || '')
+                          .replace(/<br\\>/g, '<br />')  // <br\> → <br />
+                          .replace(/<br>/g, '<br />')    // <br> → <br />
+                          .replace(/\n/g, '<br />')      // 줄바꿈 → <br />
+                          .replace(/&nbsp;/g, ' ')       // &nbsp; → 공백
+                          // 【】 뒤의 연속 공백을 탭 하나로 정리
+                          .replace(/【([^】]*)】\s{2,}/g, '【$1】\t')
+                          // 연속된 빈줄 제거 (br 사이 공백 포함)
+                          .replace(/(<br\s*\/?>\s*){2,}/gi, '<br />')
+                          // 시작/끝 빈줄 제거
+                          .replace(/^(\s*<br\s*\/?>\s*)+/gi, '')
+                          .replace(/(\s*<br\s*\/?>\s*)+$/gi, '')
+                          .trim()
+                      )
                     }}
                   />
 

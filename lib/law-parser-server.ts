@@ -219,13 +219,6 @@ export function parseLawFromAPI(jsonData: any): ParsedLaw {
   // Extract metadata
   const basicInfo = lawData.기본정보 || lawData
 
-  // Debug: log available metadata fields
-  console.log('[parseLawFromAPI] Available basicInfo keys:', Object.keys(basicInfo))
-  console.log('[parseLawFromAPI] 소관부처명:', basicInfo.소관부처명)
-  console.log('[parseLawFromAPI] 소관부처:', basicInfo.소관부처)
-  console.log('[parseLawFromAPI] 최종개정일자:', basicInfo.최종개정일자)
-  console.log('[parseLawFromAPI] 법령일련번호:', basicInfo.법령일련번호)
-
   const lawName = basicInfo.법령명_한글 || basicInfo.법령명한글 || basicInfo.법령명 || "제목 없음"
   const mst = basicInfo.법령일련번호 || basicInfo.법령MST || ""
 
@@ -238,9 +231,6 @@ export function parseLawFromAPI(jsonData: any): ParsedLaw {
     // API returns: { content: '법제처', 소관부처코드: '1170000' }
     ministry = rawMinistry.content || rawMinistry.소관부처명 || rawMinistry["#text"] || ""
   }
-
-  console.log('[parseLawFromAPI] Extracted ministry:', ministry)
-  console.log('[parseLawFromAPI] Extracted mst:', mst)
 
   const lawId = basicInfo.법령ID || basicInfo.법령키 || "unknown"
 
@@ -377,12 +367,8 @@ export function parseLawFromAPI(jsonData: any): ParsedLaw {
 
   metadata.articleCount = articles.length
 
-  console.log(`[parseLawFromAPI] Parsed ${articles.length} articles for ${metadata.lawName}`)
-
   // Generate markdown
   const markdown = generateMarkdown(metadata, articles)
-
-  console.log(`[parseLawFromAPI] Generated markdown (${markdown.length} chars)`)
 
   return {
     metadata,
@@ -524,15 +510,11 @@ export async function parseLawByNameOrId(
     // Try as law ID first (if it's all digits)
     if (/^\d+$/.test(searchQuery)) {
       try {
-        console.log(`[parseLawByNameOrId] Trying to fetch by ID: ${searchQuery}`)
         const lawData = await fetchLawFromAPI(searchQuery, apiKey)
-        console.log(`[parseLawByNameOrId] Fetched law data, parsing...`)
         const parsed = parseLawFromAPI(lawData)
-        console.log(`[parseLawByNameOrId] Successfully parsed: ${parsed.metadata.lawName}`)
         return { success: true, law: parsed }
-      } catch (e: any) {
+      } catch {
         // Not a valid ID, continue to search
-        console.log(`[parseLawByNameOrId] ID fetch/parse failed: ${e.message}`)
       }
     }
 

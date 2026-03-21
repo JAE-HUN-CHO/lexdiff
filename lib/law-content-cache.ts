@@ -44,15 +44,12 @@ async function openDB(): Promise<IDBDatabase> {
       const db = (event.target as IDBOpenDBRequest).result
       const oldVersion = event.oldVersion
 
-      console.log(`📦 IndexedDB upgrade needed: v${oldVersion} → v${DB_VERSION}`)
-
       // Version 10: 2단계 행정규칙 캐시 구조 추가
       // 기존 스토어가 있다면 모두 삭제 (이전 버전 호환 문제 방지)
       const existingStores = Array.from(db.objectStoreNames)
       existingStores.forEach((storeName) => {
         if (db.objectStoreNames.contains(storeName)) {
           db.deleteObjectStore(storeName)
-          console.log(`🗑️ Deleted old store: ${storeName}`)
         }
       })
 
@@ -63,24 +60,20 @@ async function openDB(): Promise<IDBDatabase> {
       contentStore.createIndex("lawTitle", "lawTitle", { unique: false })
       contentStore.createIndex("searchKey", "searchKey", { unique: false })
       contentStore.createIndex("normalizedQuery", "normalizedQuery", { unique: false })
-      console.log(`✅ Created ${CONTENT_STORE} (v${DB_VERSION})`)
 
       // 행정규칙 법령별 제1조 캐시 스토어 (admin-rule-cache와 공유)
       const purposeStore = db.createObjectStore("lawAdminRulesPurposeCache", { keyPath: "key" })
       purposeStore.createIndex("timestamp", "timestamp", { unique: false })
       purposeStore.createIndex("lawName", "lawName", { unique: false })
-      console.log(`✅ Created lawAdminRulesPurposeCache (v${DB_VERSION})`)
 
       // 행정규칙 조문별 매칭 인덱스 스토어 (admin-rule-cache와 공유)
       const matchIndexStore = db.createObjectStore("articleMatchIndexCache", { keyPath: "key" })
       matchIndexStore.createIndex("timestamp", "timestamp", { unique: false })
       matchIndexStore.createIndex("lawName", "lawName", { unique: false })
-      console.log(`✅ Created articleMatchIndexCache (v${DB_VERSION})`)
 
       // 행정규칙 내용 캐시 스토어 (admin-rule-cache와 공유)
       const adminContentStore = db.createObjectStore("adminRulesContentCache", { keyPath: "key" })
       adminContentStore.createIndex("timestamp", "timestamp", { unique: false })
-      console.log(`✅ Created adminRulesContentCache (v${DB_VERSION})`)
     }
   })
 }
@@ -112,8 +105,6 @@ async function cleanExpiredCache(): Promise<void> {
         cursor.delete()
         deletedCount++
         cursor.continue()
-      } else if (deletedCount > 0) {
-        console.log(`🗑️ Cleaned ${deletedCount} expired law content cache entries`)
       }
     }
 
@@ -161,16 +152,6 @@ export async function setLawContentCache(
       searchKey = `query:${normalizedQuery}`
     }
 
-    console.log(`💾 [Phase 7] 캐시 저장 중: ${meta.lawTitle}`, {
-      lawId,
-      effectiveDate: effectiveDate || '(없음)',
-      articles: articles.length,
-      key,
-      rawQuery: rawQuery || '❌ 없음',
-      normalizedQuery: normalizedQuery || '❌ 없음',
-      searchKey: searchKey || '❌ 없음',
-    })
-
     const entry: LawContentCacheEntry = {
       key,
       searchKey,           // Phase 7
@@ -206,23 +187,18 @@ export async function setLawContentCache(
 
     db.close()
 
-    console.log(`✅ 캐시 저장 완료: ${meta.lawTitle} (${articles.length}개 조문, key: ${key}${searchKey ? `, searchKey: ${searchKey}` : ''})`)
-
     // 백그라운드로 만료된 캐시 정리
     cleanExpiredCache().catch(console.error)
   } catch (error) {
     // ✅ VersionError는 조용히 무시 (DB 업그레이드 중)
     if (error instanceof Error && error.name === 'VersionError') {
-      console.warn("⚠️ IndexedDB version mismatch detected. Cache will be rebuilt on next access.")
       return
     }
 
     // NotFoundError: object store not found - IndexedDB 스키마 불일치
     if (error instanceof DOMException && error.name === "NotFoundError") {
-      console.warn("⚠️ IndexedDB 스키마 불일치 감지, 데이터베이스를 재생성합니다...")
       try {
         indexedDB.deleteDatabase(DB_NAME)
-        console.log("🗑️ IndexedDB 삭제 완료, 다음 요청 시 자동으로 재생성됩니다")
       } catch (deleteError) {
         console.error("❌ IndexedDB 삭제 실패:", deleteError)
       }
@@ -245,8 +221,6 @@ export async function getLawContentCacheByQuery(
     const { normalizeSearchQuery } = await import('./search-normalizer')
     const normalized = normalizeSearchQuery(rawQuery)
     const searchKey = `query:${normalized}`
-
-    console.log(`🔍 [Phase 7] 캐시 조회 (검색어): "${normalized}"`)
 
     const db = await openDB()
 
@@ -278,29 +252,24 @@ export async function getLawContentCacheByQuery(
     db.close()
 
     if (!entry) {
-      console.log(`❌ 캐시 MISS (검색어): "${normalized}"`)
       return null
     }
 
     // 만료 체크
     const expiryTime = Date.now() - CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
     if (entry.timestamp < expiryTime) {
-      console.log(`⏰ Cache expired: "${normalized}"`)
       clearLawContentCache(entry.lawId, entry.effectiveDate).catch(console.error)
       return null
     }
 
-    console.log(`✅ 캐시 HIT (검색어): "${entry.lawTitle}" (${entry.articles.length}개 조문)`)
     return entry
   } catch (error) {
     console.error("❌ 캐시 조회 실패 (검색어):", error)
 
     // NotFoundError: object store not found - IndexedDB 스키마 불일치
     if (error instanceof DOMException && error.name === "NotFoundError") {
-      console.warn("⚠️ IndexedDB 스키마 불일치 감지, 데이터베이스를 재생성합니다...")
       try {
         indexedDB.deleteDatabase(DB_NAME)
-        console.log("🗑️ IndexedDB 삭제 완료, 다음 요청 시 자동으로 재생성됩니다")
       } catch (deleteError) {
         console.error("❌ IndexedDB 삭제 실패:", deleteError)
       }
@@ -333,7 +302,6 @@ export async function getLawContentCache(
     // effectiveDate가 있으면 정확히 매칭
     if (effectiveDate) {
       const key = `${lawId}_${effectiveDate}`
-      console.log(`🔍 캐시 조회 (정확한 키): ${key}`)
       const request = store.get(key)
       entry = await new Promise<LawContentCacheEntry | undefined>((resolve, reject) => {
         request.onsuccess = () => resolve(request.result)
@@ -341,7 +309,6 @@ export async function getLawContentCache(
       })
     } else {
       // effectiveDate가 없으면 lawId로 모든 항목 조회 후 가장 최신 것 선택
-      console.log(`🔍 캐시 조회 (lawId만): ${lawId}`)
       const index = store.index("lawId")
       const request = index.getAll(lawId)
 
@@ -353,38 +320,31 @@ export async function getLawContentCache(
       // 가장 최신 캐시 선택 (timestamp 기준)
       if (entries.length > 0) {
         entry = entries.sort((a, b) => b.timestamp - a.timestamp)[0]
-        console.log(`📋 Found ${entries.length} cache entries, using most recent`)
       }
     }
 
     db.close()
 
     if (!entry) {
-      console.log(`❌ 캐시 MISS: ${lawId}`)
       return null
     }
 
     // 만료 체크
     const expiryTime = Date.now() - CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
     if (entry.timestamp < expiryTime) {
-      console.log(`⏰ Cache expired for ${entry.lawTitle}`)
       // 만료된 캐시는 비동기로 삭제
       clearLawContentCache(lawId, entry.effectiveDate).catch(console.error)
       return null
     }
 
-    console.log(`✅ 캐시 HIT: ${entry.lawTitle} (${entry.articles.length}개 조문, key: ${entry.key})`)
     return entry
   } catch (error) {
     console.error("❌ 캐시 조회 실패:", error)
 
     // NotFoundError: object store not found - IndexedDB 스키마 불일치
     if (error instanceof DOMException && error.name === "NotFoundError") {
-      console.warn("⚠️ IndexedDB 스키마 불일치 감지, 데이터베이스를 재생성합니다...")
       try {
-        // 기존 DB 삭제
         indexedDB.deleteDatabase(DB_NAME)
-        console.log("🗑️ IndexedDB 삭제 완료, 다음 요청 시 자동으로 재생성됩니다")
       } catch (deleteError) {
         console.error("❌ IndexedDB 삭제 실패:", deleteError)
       }
@@ -448,8 +408,6 @@ export async function clearAllLawContentCache(): Promise<void> {
     })
 
     db.close()
-
-    console.log("🗑️ Cleared all law content cache")
   } catch (error) {
     console.error("Failed to clear all law content cache:", error)
   }

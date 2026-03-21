@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge"
 import type { DelegationGroupCardProps } from "./types"
 import { formatDelegationHeader } from "./utils"
+import { sanitizeForRender } from "@/lib/sanitize-html-render"
 
 export function DelegationGroupCard({
     group,
@@ -45,7 +46,7 @@ export function DelegationGroupCard({
                                         wordBreak: "break-word",
                                     }}
                                     onClick={handleContentClick}
-                                    dangerouslySetInnerHTML={{ __html: cacheKey ? delegationsHtmlCache.get(cacheKey) || '' : '' }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeForRender(cacheKey ? delegationsHtmlCache.get(cacheKey) || '' : '') }}
                                 />
                             )}
                         </div>

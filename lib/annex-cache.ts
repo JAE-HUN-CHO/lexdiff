@@ -28,7 +28,6 @@ async function openDB(): Promise<IDBDatabase> {
         const store = db.createObjectStore(ANNEX_STORE, { keyPath: "key" })
         store.createIndex("timestamp", "timestamp", { unique: false })
         store.createIndex("lawName", "lawName", { unique: false })
-        console.log(`✅ Created ${ANNEX_STORE} (v${DB_VERSION})`)
       }
     }
   })
@@ -71,19 +70,16 @@ export async function getAnnexCache(
     db.close()
 
     if (!entry) {
-      console.log(`❌ 별표 캐시 MISS: ${key}`)
       return null
     }
 
     // 만료 체크
     const expiryTime = Date.now() - CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
     if (entry.timestamp < expiryTime) {
-      console.log(`⏰ 별표 캐시 만료: ${key}`)
       clearAnnexCache(lawId, annexNumber).catch(console.error)
       return null
     }
 
-    console.log(`✅ 별표 캐시 HIT: ${entry.lawName} ${entry.annexNumber}`)
     return entry
   } catch (error) {
     console.error("❌ 별표 캐시 조회 실패:", error)
@@ -135,7 +131,6 @@ export async function setAnnexCache(
     })
 
     db.close()
-    console.log(`💾 별표 캐시 저장: ${lawName} ${annexNumber}`)
 
     // 백그라운드로 만료된 캐시 정리
     cleanExpiredAnnexCache().catch(console.error)
@@ -201,8 +196,6 @@ async function cleanExpiredAnnexCache(): Promise<void> {
         cursor.delete()
         deletedCount++
         cursor.continue()
-      } else if (deletedCount > 0) {
-        console.log(`🗑️ ${deletedCount}개 만료된 별표 캐시 삭제됨`)
       }
     }
 
@@ -238,7 +231,6 @@ export async function clearAllAnnexCache(): Promise<void> {
     })
 
     db.close()
-    console.log("🗑️ 모든 별표 캐시 삭제됨")
   } catch (error) {
     console.error("❌ 별표 캐시 전체 삭제 실패:", error)
   }

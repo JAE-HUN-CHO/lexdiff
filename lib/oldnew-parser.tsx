@@ -19,24 +19,13 @@ export function parseOldNewXML(xmlText: string, targetJo?: string): OldNewCompar
 
   // Extract old version metadata
   const oldInfo = xmlDoc.querySelector("구조문_기본정보")
-  console.log("[DEBUG] 구조문_기본정보 존재:", !!oldInfo)
-  if (oldInfo) {
-    console.log("[DEBUG] 구조문_기본정보 내용:", oldInfo.outerHTML?.substring(0, 500))
-  }
 
   const oldEffectiveDate = oldInfo?.querySelector("시행일자")?.textContent || undefined
   const oldPromulgationDate = oldInfo?.querySelector("공포일자")?.textContent || undefined
   const oldPromulgationNumber = oldInfo?.querySelector("공포번호")?.textContent || undefined
 
-  console.log("[DEBUG] 구법 메타데이터:", {
-    effectiveDate: oldEffectiveDate,
-    promulgationDate: oldPromulgationDate,
-    promulgationNumber: oldPromulgationNumber,
-  })
-
   // Extract new version metadata
   const newInfo = xmlDoc.querySelector("신조문_기본정보")
-  console.log("[DEBUG] 신조문_기본정보 존재:", !!newInfo)
 
   const newEffectiveDate = newInfo?.querySelector("시행일자")?.textContent || undefined
   const newPromulgationDate = newInfo?.querySelector("공포일자")?.textContent || undefined
@@ -47,14 +36,6 @@ export function parseOldNewXML(xmlText: string, targetJo?: string): OldNewCompar
   const lawTitle =
     newInfo?.querySelector("법령명")?.textContent || oldInfo?.querySelector("법령명")?.textContent || "알 수 없는 법령"
   const mst = lawTitle
-
-  console.log("[DEBUG] 신법 메타데이터:", {
-    effectiveDate: newEffectiveDate,
-    promulgationDate: newPromulgationDate,
-    promulgationNumber: newPromulgationNumber,
-    lawId,
-    lawTitle,
-  })
 
   const oldArticles = xmlDoc.querySelectorAll("구조문목록 > 조문")
   let oldContent = ""
@@ -164,8 +145,6 @@ export function highlightDifferences(
   oldContent: string,
   newContent: string,
 ): { oldHighlighted: string; newHighlighted: string } {
-  console.log("Highlighting differences...")
-
   let oldHighlighted = oldContent
     .replace(
       /<P>/g,
@@ -195,8 +174,6 @@ export function highlightDifferences(
   // Convert line breaks to <br> for proper display
   oldHighlighted = oldHighlighted.replace(/\n/g, "<br>")
   newHighlighted = newHighlighted.replace(/\n/g, "<br>")
-
-  console.log("Highlighting complete")
 
   // XSS 방어: 허용된 태그/속성만 통과
   const sanitizeOptions = {

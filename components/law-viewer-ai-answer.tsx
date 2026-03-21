@@ -128,11 +128,6 @@ export function AIAnswerSidebar({
         }
     }, [missingTitleRequests, isStreaming])
 
-    // ✅ 디버깅: isStreaming 상태 확인
-    useEffect(() => {
-        console.log('🔄 [AIAnswerSidebar] isStreaming:', isStreaming)
-    }, [isStreaming])
-
     return (
         <>
             {showHeader ? (

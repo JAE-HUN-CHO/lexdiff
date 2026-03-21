@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { formatPrecedentDate } from "@/lib/precedent-parser"
+import { sanitizeForRender } from "@/lib/sanitize-html-render"
 import { generateLinks } from "@/lib/unified-link-generator"
 import type { PrecedentSearchResult, PrecedentDetail } from "@/lib/precedent-parser"
 
@@ -347,7 +348,7 @@ export function PrecedentDetailPanel({
       }
     )
 
-    return result
+    return sanitizeForRender(result)
   }, [])
 
   if (loading) {
