@@ -18,7 +18,7 @@
 import { GoogleGenAI, type Part } from '@google/genai'
 import { getToolDeclarations, executeTool, executeToolsParallel, type ToolCallResult } from './tool-adapter'
 import { buildSystemPrompt, type LegalQueryType } from './prompts'
-import { TOOL_DISPLAY_NAMES, selectToolsForQuery } from './tool-tiers'
+import { TOOL_DISPLAY_NAMES, selectToolsForQuery, CHAIN_COVERS } from './tool-tiers'
 import { KNOWN_MST, cacheMSTEntries, detectFastPath, parseLawEntries, findBestMST, findBestOrdinanceSeq, type LawEntry } from './fast-path'
 import { buildCitations, calcConfidence, parseCitationsFromAnswer } from './citations'
 import { summarizeToolResult, getToolCallQuery, correctToolArgs, rerankAiSearchResult } from './result-utils'
@@ -49,6 +49,7 @@ export interface FCRAGResult {
   confidenceLevel: 'high' | 'medium' | 'low'
   complexity: QueryComplexity
   queryType: LegalQueryType
+  isTruncated?: boolean
   warnings?: string[]
 }
 
@@ -287,7 +288,7 @@ export async function* executeClaudeRAGStream(
     const messages: DirectMessage[] = [{ role: 'user', content: userContent }]
     let toolCount = 0
 
-    for await (const event of callAnthropicStream(systemPrompt, messages, { signal })) {
+    for await (const event of callAnthropicStream(systemPrompt, messages, { signal, maxTurns: preEvidence ? 1 : undefined })) {
       if (signal?.aborted) {
         yield { type: 'status', message: '검색이 취소되었습니다.', progress: 0 }
         return
@@ -318,6 +319,9 @@ export async function* executeClaudeRAGStream(
           success: !event.isError,
           summary,
         }
+      } else if (event.type === 'text') {
+        // Claude CLI의 텍스트 출력을 실시간 answer_token으로 전달
+        yield { type: 'answer_token', data: { text: event.text } }
       } else if (event.type === 'result') {
         const answer = event.text?.trim()
         if (!answer || answer.length < 10) {
@@ -339,6 +343,7 @@ export async function* executeClaudeRAGStream(
             confidenceLevel: 'high' as const,
             complexity,
             queryType,
+            isTruncated: event.stopReason === 'max_tokens',
             warnings: warnings.length > 0 ? warnings : undefined,
           },
         }
@@ -429,6 +434,8 @@ export async function* executeGeminiRAGStream(
   const failureCount = new Map<string, number>()
   let totalInputTokens = 0
   let totalOutputTokens = 0
+  // Chain 도구가 호출되면 커버하는 TIER_0 도구를 이후 턴에서 제외
+  const chainCoveredTools = new Set<string>()
 
   // 프로그레스: 8% → 88% 범위를 턴 수에 따라 분배
   const progressRange = 80
@@ -444,7 +451,7 @@ export async function* executeGeminiRAGStream(
       yield { type: 'status', message: 'AI가 분석하고 있습니다...', progress: currentProgress }
 
       const activeDeclarations = toolDeclarations.filter(
-        d => (failureCount.get(d.name!) || 0) < 2
+        d => (failureCount.get(d.name!) || 0) < 2 && !chainCoveredTools.has(d.name!)
       )
 
       // 클라이언트 취소 시 조기 종료
@@ -498,6 +505,7 @@ export async function* executeGeminiRAGStream(
             confidenceLevel: calcConfidence(allToolResults),
             complexity,
             queryType,
+            isTruncated: candidate.finishReason === 'MAX_TOKENS',
             warnings: warnings.length > 0 ? warnings : undefined,
           },
         }
@@ -518,6 +526,7 @@ export async function* executeGeminiRAGStream(
               confidenceLevel: calcConfidence(allToolResults),
               complexity,
               queryType,
+              isTruncated: candidate.finishReason === 'MAX_TOKENS',
               warnings: warnings.length > 0 ? warnings : undefined,
             },
           }
@@ -545,7 +554,8 @@ export async function* executeGeminiRAGStream(
           totalOutputTokens += retryUsage.candidatesTokenCount || 0
           yield { type: 'token_usage', inputTokens: totalInputTokens, outputTokens: totalOutputTokens, totalTokens: totalInputTokens + totalOutputTokens }
         }
-        const retryText = (retry.candidates?.[0]?.content?.parts || [])
+        const retryCandidate = retry.candidates?.[0]
+        const retryText = (retryCandidate?.content?.parts || [])
           .filter((p: GeminiPart) => p.text).map((p: GeminiPart) => p.text).join('')
         yield {
           type: 'answer',
@@ -555,6 +565,7 @@ export async function* executeGeminiRAGStream(
             confidenceLevel: calcConfidence(allToolResults),
             complexity,
             queryType,
+            isTruncated: retryCandidate?.finishReason === 'MAX_TOKENS',
             warnings: warnings.length > 0 ? warnings : undefined,
           },
         }
@@ -635,6 +646,15 @@ export async function* executeGeminiRAGStream(
         if (r.name === 'search_law' && !r.isError) {
           latestSearchEntries = parseLawEntries(r.result)
           cacheMSTEntries(latestSearchEntries)
+        }
+      }
+
+      // Chain 도구 호출 감지 → 이후 턴에서 커버되는 도구 제외 (중복 호출 방지)
+      for (const call of calls) {
+        if (CHAIN_COVERS[call.name]) {
+          for (const covered of CHAIN_COVERS[call.name]) {
+            chainCoveredTools.add(covered)
+          }
         }
       }
 

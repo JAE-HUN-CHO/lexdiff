@@ -40,7 +40,7 @@ export function AIAnswerSidebar({
     const [hydratedTitles, setHydratedTitles] = useState<Record<string, string | null>>({})
 
     const groupedEntries = useMemo(() => {
-        // ✅ 로딩 중이면 빈 배열 반환
+        // 로딩 중이면 빈 배열 반환 (스켈레톤은 렌더 단에서 처리)
         if (isStreaming) return []
         // 1. 필터링: "알 수 없음", 너무 긴 법령명(파싱 오류) 제외
         const validArticles = relatedArticles.filter(law =>
@@ -159,10 +159,16 @@ export function AIAnswerSidebar({
             )}
 
             <div className="flex-1 min-h-0 px-2 pt-3 pb-4 overflow-y-auto">
-                {/* ✅ 로딩 중이면 스피너만 표시 */}
+                {/* 스트리밍 중: 스켈레톤 카드 표시 */}
                 {isStreaming ? (
-                    <div className="flex items-center justify-center h-full py-12">
-                        <Icon name="loader" className="h-8 w-8 animate-spin text-primary" />
+                    <div className="space-y-2.5 px-2">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="p-3 rounded-lg border border-border/50 bg-muted/30 animate-pulse">
+                                <div className="h-3.5 bg-muted rounded w-3/4 mb-2" />
+                                <div className="h-3 bg-muted rounded w-1/2" />
+                            </div>
+                        ))}
+                        <p className="text-xs text-muted-foreground text-center pt-2">관련 법령을 찾고 있습니다...</p>
                     </div>
                 ) : (
                 <div className="space-y-2">
@@ -523,7 +529,10 @@ export function AIAnswerContent({
                             <span className="text-sm tabular-nums leading-none">{totalUnique}</span>
                         </>
                     ) : (
-                        <span className="text-sm tabular-nums leading-none">{totalUnique}</span>
+                        <>
+                            <span className="text-sm tabular-nums leading-none">{totalUnique}</span>
+                            <Icon name="loader" size={10} className="animate-spin opacity-50 ml-0.5" />
+                        </>
                     )}
                 </div>
             </div>

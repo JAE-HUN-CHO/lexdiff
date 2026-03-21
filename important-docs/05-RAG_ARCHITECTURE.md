@@ -57,7 +57,7 @@ type FCRAGStreamEvent =
   | { type: 'error'; message: string }
 ```
 
-**`answer_token`**: Bridge(Vercel) 경로에서만 발생. Claude CLI의 텍스트 출력을 실시간 토큰 단위로 전달. 로컬/Gemini 경로는 최종 answer만 전송.
+**`answer_token`**: Claude CLI 로컬 경로 및 Bridge(Vercel) 경로에서 발생. Claude CLI의 텍스트 출력을 실시간 토큰 단위로 전달하여 타이핑 효과 구현. Gemini 경로는 최종 answer만 전송.
 
 ### 2. SSE Buffer Handling (CRITICAL)
 

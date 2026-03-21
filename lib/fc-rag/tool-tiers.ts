@@ -138,20 +138,10 @@ export function selectToolsForQuery(query: string): string[] {
   // ── Chain-aware deduplication ──
   // chain 도구가 포함되면, 해당 chain이 내부에서 호출하는 기본 도구를 제거하여
   // LLM이 chain 1회로 처리하도록 유도 (토큰 + 턴 수 절감)
-  const chainCovers: Record<string, string[]> = {
-    chain_full_research: ['search_ai_law', 'search_precedents', 'search_interpretations'],
-    chain_dispute_prep: ['search_precedents', 'search_admin_appeals', 'search_tax_tribunal_decisions', 'search_nlrc_decisions', 'search_pipc_decisions'],
-    chain_action_basis: ['get_three_tier', 'search_interpretations', 'search_precedents', 'search_admin_appeals'],
-    chain_procedure_detail: ['get_three_tier', 'get_annexes', 'search_ai_law'],
-    chain_law_system: ['get_three_tier', 'get_annexes'],
-    chain_amendment_track: ['compare_old_new', 'get_article_history'],
-    chain_ordinance_compare: ['get_three_tier'],  // search_ordinance는 제거하지 않음 (단독 조례 검색 필요)
-  }
-
-  for (const [chain, covered] of Object.entries(chainCovers)) {
+  for (const [chain, covered] of Object.entries(CHAIN_COVERS)) {
     if (tools.has(chain)) {
       for (const basic of covered) {
-        // TIER_0 도구는 제거하지 않음 (항상 필요한 기본 도구)
+        // TIER_0 도구는 초기 선택 시점에서는 제거하지 않음 (런타임 중복 방지는 engine.ts에서 처리)
         if (!TIER_0.includes(basic as any)) {
           tools.delete(basic)
         }
@@ -161,6 +151,17 @@ export function selectToolsForQuery(query: string): string[] {
 
   // Cap at 25
   return Array.from(tools).slice(0, 25)
+}
+
+// Chain 도구가 내부에서 커버하는 기본 도구 매핑 (engine.ts에서 런타임 중복 방지에도 사용)
+export const CHAIN_COVERS: Record<string, string[]> = {
+    chain_full_research: ['search_ai_law', 'search_precedents', 'search_interpretations'],
+    chain_dispute_prep: ['search_precedents', 'search_admin_appeals', 'search_tax_tribunal_decisions', 'search_nlrc_decisions', 'search_pipc_decisions'],
+    chain_action_basis: ['get_three_tier', 'search_interpretations', 'search_precedents', 'search_admin_appeals'],
+    chain_procedure_detail: ['get_three_tier', 'get_annexes', 'search_ai_law'],
+    chain_law_system: ['get_three_tier', 'get_annexes'],
+    chain_amendment_track: ['compare_old_new', 'get_article_history'],
+    chain_ordinance_compare: ['get_three_tier'],  // search_ordinance는 제거하지 않음 (단독 조례 검색 필요)
 }
 
 // Display names for ALL 69 tools (62 base + 7 chain)

@@ -100,7 +100,7 @@
   │              ↓ SSE 이벤트 루프
   │              status → addToolCallLog
   │              tool_call/tool_result → 타임라인 표시
-  │              answer_token → 실시간 답변 누적 (Bridge 경로만)
+  │              answer_token → 실시간 답변 누적 (Claude CLI 로컬 + Bridge)
   │              answer → 최종 답변 + 인용
   │              citation_verification → 검증 배지
   │              source → Claude/Gemini 표시

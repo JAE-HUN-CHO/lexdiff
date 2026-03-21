@@ -7,6 +7,7 @@ import { VirtualizedFullArticleView } from "@/components/virtualized-full-articl
 import { DelegationPanel } from "@/components/law-viewer-delegation-panel"
 import { PrecedentDetailPanel } from "@/components/precedent-section"
 import { AIAnswerContent } from "@/components/law-viewer-ai-answer"
+import { AISearchErrorBoundary } from "@/components/error-boundary"
 import { LawViewerSingleArticle } from "./law-viewer-single-article"
 import type { LawMeta, LawArticle } from "@/lib/law-types"
 import type { VerifiedCitation } from "@/lib/citation-verifier"
@@ -158,25 +159,27 @@ export function LawViewerMainContent({
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         <ScrollArea className="h-full w-full" ref={contentRef}>
           <div className="pb-20 w-full max-w-full overflow-x-hidden">
-            <AIAnswerContent
-              aiAnswerContent={aiAnswerProps.content || ''}
-              userQuery={aiAnswerProps.userQuery}
-              aiConfidenceLevel={aiAnswerProps.confidenceLevel}
-              fileSearchFailed={aiAnswerProps.fileSearchFailed}
-              aiCitations={aiAnswerProps.citations}
-              fontSize={fontSize}
-              setFontSize={setFontSize}
-              onLawClick={aiAnswerProps.onLawClick}
-              aiQueryType={aiAnswerProps.queryType}
-              isTruncated={aiAnswerProps.isTruncated}
-              onRefresh={aiAnswerProps.onRefresh}
-              isStreaming={aiAnswerProps.isStreaming}
-              searchProgress={aiAnswerProps.searchProgress}
-              toolCallLogs={aiAnswerProps.toolCallLogs}
-              conversationHistory={aiAnswerProps.conversationHistory}
-              onFollowUp={aiAnswerProps.onFollowUp}
-              onNewConversation={aiAnswerProps.onNewConversation}
-            />
+            <AISearchErrorBoundary>
+              <AIAnswerContent
+                aiAnswerContent={aiAnswerProps.content || ''}
+                userQuery={aiAnswerProps.userQuery}
+                aiConfidenceLevel={aiAnswerProps.confidenceLevel}
+                fileSearchFailed={aiAnswerProps.fileSearchFailed}
+                aiCitations={aiAnswerProps.citations}
+                fontSize={fontSize}
+                setFontSize={setFontSize}
+                onLawClick={aiAnswerProps.onLawClick}
+                aiQueryType={aiAnswerProps.queryType}
+                isTruncated={aiAnswerProps.isTruncated}
+                onRefresh={aiAnswerProps.onRefresh}
+                isStreaming={aiAnswerProps.isStreaming}
+                searchProgress={aiAnswerProps.searchProgress}
+                toolCallLogs={aiAnswerProps.toolCallLogs}
+                conversationHistory={aiAnswerProps.conversationHistory}
+                onFollowUp={aiAnswerProps.onFollowUp}
+                onNewConversation={aiAnswerProps.onNewConversation}
+              />
+            </AISearchErrorBoundary>
           </div>
         </ScrollArea>
       </div>

@@ -152,7 +152,7 @@ export type ClaudeStreamEvent =
   | { type: 'tool_call'; name: string; input: Record<string, unknown> }
   | { type: 'tool_result'; name: string; content: string; isError: boolean }
   | { type: 'text'; text: string }
-  | { type: 'result'; text: string; usage: { inputTokens: number; outputTokens: number } }
+  | { type: 'result'; text: string; stopReason: string; usage: { inputTokens: number; outputTokens: number } }
 
 /** MCP 도구 이름에서 korean-law prefix 제거 */
 function stripMcpPrefix(name: string): string {
@@ -167,9 +167,9 @@ function stripMcpPrefix(name: string): string {
 export async function* callAnthropicStream(
   systemPrompt: string,
   messages: DirectMessage[],
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; maxTurns?: number },
 ): AsyncGenerator<ClaudeStreamEvent> {
-  const { signal } = options || {}
+  const { signal, maxTurns = 20 } = options || {}
 
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
   const prompt = typeof lastUserMsg?.content === 'string'
@@ -183,7 +183,7 @@ export async function* callAnthropicStream(
     '--output-format', 'stream-json',
     '--include-partial-messages',
     '--no-session-persistence',
-    '--max-turns', '20',
+    '--max-turns', String(maxTurns),
     '--system-prompt', systemPrompt,
     prompt,
   ]
@@ -285,6 +285,7 @@ export async function* callAnthropicStream(
       yield {
         type: 'result',
         text: finalText || resultText,
+        stopReason: (event.stop_reason || 'end_turn') as string,
         usage: {
           inputTokens: usage.input_tokens || 0,
           outputTokens: usage.output_tokens || 0,
