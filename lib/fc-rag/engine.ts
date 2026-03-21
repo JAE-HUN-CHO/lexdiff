@@ -5,7 +5,8 @@
  * 법제처 API 실시간 데이터 기반 답변 생성.
  *
  * ── LLM 구성 ──
- * Primary : Sonnet 4.6 (Claude) — Anthropic SDK + OpenClaw OAuth 토큰
+ * Primary : Sonnet 4.6 (Claude) — CLI subprocess (stream-json 모드)
+ *           로컬: claude.exe 직접 spawn / Vercel: OpenClaw Bridge 프록시
  * Fallback: Gemini Flash — Claude 불능 시 이 엔진이 직접 Gemini 호출
  *
  * 도구 어댑터(tool-adapter), Tier 시스템(tool-tiers), 프롬프트(prompts)는
@@ -59,6 +60,9 @@ export type FCRAGStreamEvent =
   | { type: 'tool_result'; name: string; displayName: string; success: boolean; summary: string }
   | { type: 'token_usage'; inputTokens: number; outputTokens: number; totalTokens: number }
   | { type: 'answer'; data: FCRAGResult }
+  | { type: 'answer_token'; data: { text: string } }
+  | { type: 'citation_verification'; citations: Array<{ lawName: string; articleNum: string; text: string; source: string; verified: boolean; verificationMethod: string }> }
+  | { type: 'source'; source: 'claude' | 'openclaw' | 'gemini' }
   | { type: 'error'; message: string }
 
 // ─── 설정 ───
@@ -234,12 +238,12 @@ async function* handleFastPath(
   return false
 }
 
-// ─── Claude Primary 엔진 (OpenClaw Gateway 경유) ───
+// ─── Claude Primary 엔진 (CLI subprocess stream-json) ───
 
 /**
  * Claude FC-RAG 스트리밍 실행 (Primary)
- * OpenClaw Gateway /v1/chat/completions 호출.
- * Gateway 에이전트가 korean-law MCP 도구를 내부적으로 처리.
+ * Claude CLI subprocess를 stream-json 모드로 spawn.
+ * CLI가 korean-law MCP 도구를 네이티브로 호출, 중간 이벤트를 실시간 SSE로 전달.
  */
 export async function* executeClaudeRAGStream(
   query: string,

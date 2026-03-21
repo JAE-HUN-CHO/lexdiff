@@ -66,12 +66,13 @@ npm run lint     # 린트
 4. **모바일 onClick**: async 금지 → `.then().catch()`
 
 ## Tech Stack
-Next.js 16, React 19, TypeScript 5, Tailwind v4, shadcn/ui, Gemini 2.5 Flash
+Next.js 16, React 19, TypeScript 5, Tailwind v4, shadcn/ui, korean-law-mcp
 
 ## 상세 문서
 | 문서 | 내용 |
 |------|------|
-| [09-COMPONENT_ARCHITECTURE](important-docs/09-COMPONENT_ARCHITECTURE.md) | 컴포넌트 구조, 데이터 흐름 |
+| [05-RAG_ARCHITECTURE](important-docs/05-RAG_ARCHITECTURE.md) | FC-RAG 파이프라인, SSE, Claude CLI/Bridge, Gemini 폴백 |
+| [09-COMPONENT_ARCHITECTURE](important-docs/09-COMPONENT_ARCHITECTURE.md) | 컴포넌트 구조, AI 검색, 데이터 흐름 |
+| [17-SYSTEM_CURRENT_STATE](important-docs/17-SYSTEM_CURRENT_STATE.md) | 시스템 전체 현황, API 라우트, 기술스택 |
 | [07-LEGAL_DATA_API_GUIDE](important-docs/07-LEGAL_DATA_API_GUIDE.md) | 판례/해석례 API |
-| [05-RAG_ARCHITECTURE](important-docs/05-RAG_ARCHITECTURE.md) | SSE, Gemini 연동 |
 | [03-JSON_TO_HTML_FLOW](important-docs/03-JSON_TO_HTML_FLOW.md) | 법령 뷰어 렌더링 |

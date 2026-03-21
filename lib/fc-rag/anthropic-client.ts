@@ -60,7 +60,9 @@ export async function callAnthropic(
   const env = { ...process.env }
   delete env.ANTHROPIC_API_KEY
 
-  console.log(`[claude-cli] calling ${CLAUDE_MODEL}, prompt: ${prompt.length} chars, system: ${systemPrompt.length} chars`)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[claude-cli] calling ${CLAUDE_MODEL}, prompt: ${prompt.length} chars, system: ${systemPrompt.length} chars`)
+  }
 
   try {
     const stdout = await new Promise<string>((resolve, reject) => {
@@ -73,6 +75,11 @@ export async function callAnthropic(
         if (err && !stdout?.trim()) {
           reject(new Error(`Claude CLI exit: ${stderr?.substring(0, 300) || err.message}`))
         } else {
+          if (err) {
+            // 비정상 종료이지만 부분 stdout 존재 — 경고 후 복구 시도
+            const code = (err as NodeJS.ErrnoException).code || 'unknown'
+            console.warn(`[claude-cli] non-zero exit (${code}) but got partial stdout (${stdout?.length ?? 0} chars), attempting recovery`)
+          }
           resolve(stdout || '')
         }
       })
@@ -120,7 +127,9 @@ export async function callAnthropic(
     }
 
     const usage = (resultEvent.usage || {}) as Record<string, number>
-    console.log(`[claude-cli] success: ${text.length} chars, turns: ${resultEvent.num_turns}`)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[claude-cli] success: ${text.length} chars, turns: ${resultEvent.num_turns}`)
+    }
 
     return {
       content: [{ type: 'text', text }],
@@ -182,7 +191,9 @@ export async function* callAnthropicStream(
   const env = { ...process.env }
   delete env.ANTHROPIC_API_KEY
 
-  console.log(`[claude-cli] streaming ${CLAUDE_MODEL}, prompt: ${prompt.length} chars`)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[claude-cli] streaming ${CLAUDE_MODEL}, prompt: ${prompt.length} chars`)
+  }
 
   const proc = spawn(CLAUDE_BIN, args, {
     env,
@@ -268,7 +279,9 @@ export async function* callAnthropicStream(
       }
 
       const usage = (event.usage || {}) as Record<string, number>
-      console.log(`[claude-cli] stream done: ${(finalText || resultText).length} chars, turns: ${event.num_turns}`)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[claude-cli] stream done: ${(finalText || resultText).length} chars, turns: ${event.num_turns}`)
+      }
       yield {
         type: 'result',
         text: finalText || resultText,

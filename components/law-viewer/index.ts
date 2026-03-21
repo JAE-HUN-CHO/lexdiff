@@ -1,4 +1,6 @@
 export { LawViewerActionButtons } from './law-viewer-action-buttons'
+export { LawViewerProvider, useLawViewerContext } from './law-viewer-context'
+export type { LawViewerContextValue } from './law-viewer-context'
 export { LawViewerAnalysisMenu } from './law-viewer-analysis-menu'
 export { LawViewerRelatedCases } from './law-viewer-related-cases'
 export { LawViewerOrdinanceActions } from './law-viewer-ordinance-actions'

@@ -1,5 +1,59 @@
 # Architecture Decisions
 
+## 2026-03-16 - 쿼리 확장 차세대 아키텍처 결정
+
+**상황**: 수동 사전 기반 쿼리 확장이 Precision 99%, Lift 96%에 도달했지만 새 도메인마다 수동 보강 필요
+**결정**: 3단계 로드맵 — Phase 1: LLM 사전 자동보강 (OpenClaw Warm Path) → Phase 2: 하이브리드 검색 (Supabase pgvector + RRF) → Phase 3: 조문 임베딩 + 리랭킹
+**이유**: 법제처 API가 키워드 매칭만 지원하므로 시맨틱 축 추가 필요. LBox 한국법률 임베딩(legalstructure-aware-embedding) 활용 가능. "특화 시스템 83% vs 범용 58-64%" 연구 결과.
+**PRD**: `.claude/plans/query-expansion-next-gen.md`, `.claude/plans/query-expansion-llm-augmentation.md`
+
+## 2026-03-16 - 법령 검색에도 쿼리 확장 적용
+
+**상황**: 조례만 확장하고 법령은 원본 1회 호출 → 0건이면 AI 제안
+**결정**: `expandForLawSearch` 결과 상위 2개를 원본과 병렬 호출 → 머징
+**이유**: "전기차" 0건→4건, "응급실" 0건→3건, "강아지" 0건→3건 등 10/12 일상어 해결
+**파일**: `useBasicSearch.ts` 법령 검색 경로
+
+## 2026-03-16 - 조례 검색 머징+리랭킹 도입
+
+**상황**: "첫 성공에서 중단" 전략이 precision 60% (택시→마을버스 노이즈)
+**결정**: 상위 3개 전략 병렬 실행 → 결과 머징 → `scoreRelevance` 리랭킹
+**이유**: Precision 91%→99%, worst case 60%→90%
+**파일**: `useBasicSearch.ts`, `query-expansion.ts` (scoreRelevance, priority 필드)
+
+## 2026-03-07 - AGENTS.md 규칙 0 유지 결정
+
+**상황**: 미니PC에서 "규칙 0 삭제" 제안 — klaw-direct 파이프라인 제거됐다고 주장
+**결정**: 규칙 0 유지
+**이유**: Bridge `server.mjs:684-685`에서 `buildNanobotPrompt()`가 여전히 `[사전 수집된 법령 조문]` 블록을 fast-path 증거로 주입 중. `detectFastPath()` (line 1025-1060)도 활성. 미니PC AI의 판단이 틀림.
+**영향**: `nanobot/AGENTS.md` 규칙 0 문구 약간 간결화만 함
+
+## 2026-03-07 - AGENTS.md 도구명 접두사 제거
+
+**상황**: 기존 `mcp_korean-law_search_ai_law` → `search_ai_law`로 간결화
+**결정**: 접두사 제거 (가독성)
+**리스크**: 없음 — 2026-03-07 미니PC 테스트 통과. nanobot 정상 인식.
+**결과**: 응답시간 38초→16.6초, 품질 HIGH. 접두사는 프롬프트 가이드용이라 도구 매칭에 무관.
+**영향**: `nanobot/AGENTS.md` 도구 목록 전체
+
+---
+
+## 2026-03-14 - 영향 추적기: searchLaw 직접 호출 → executeTool 전환
+
+**상황**: `korean-law-mcp/build/tools/search.js`의 `searchLaw`를 직접 import + `LawApiClient` 모듈 스코프 생성 시 Next.js 런타임에서 무한 행 발생
+**결정**: `executeTool('search_law')` 사용 + 압축 결과 파서 작성
+**이유**: executeTool은 fc-rag에서 이미 검증됨. lawId 대신 MST를 lawId로 사용 (compare_old_new/get_three_tier 모두 MST로 동작)
+**영향**: `lib/impact-tracker/engine.ts`, `result-parser.ts` (parseSearchResult 추가)
+
+## 2026-03-14 - 영향 추적기: AI 분류 OpenClaw 우선 패턴
+
+**상황**: PRD는 Gemini 직접 호출이지만, 프로젝트의 미니PC 파이프라인 활용 요청
+**결정**: OpenClaw(fetchFromOpenClaw) 우선 호출 → 실패 시 Gemini 2.5 Flash Lite 폴백
+**이유**: 기존 fc-rag의 OpenClaw 인프라 재활용. 미니PC가 살아있으면 무료 AI 분류, 아니면 Gemini로 폴백
+**영향**: `lib/impact-tracker/classifier.ts`
+
+---
+
 ## 2026-02-25 - Turso/DB 레거시 전면 삭제
 
 **상황**: FC-RAG 전환 완료 후 빌드 실패 — `lib/db.ts`가 모듈 로드시 TURSO 환경변수 없으면 throw

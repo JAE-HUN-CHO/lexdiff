@@ -105,6 +105,31 @@ export function summarizeToolResult(name: string, result: ToolCallResult): strin
       return lawName ? `${lawName} 조문+판례` : '조문+판례 조회 완료'
     }
     case 'get_law_history': return '법령 연혁 조회 완료'
+    // Tier 2: Structural / Historical
+    case 'get_law_system_tree': return '법령 체계 분류 조회 완료'
+    case 'get_external_links': return '외부 링크 생성 완료'
+    case 'search_historical_law': {
+      const count = text.match(/총 (\d+)건/)?.[1]
+      return count ? `과거 법령 ${count}건` : '과거 법령 검색 완료'
+    }
+    case 'get_historical_law': return '과거 법령 조문 조회 완료'
+    // Tier 3: Legal terms / Knowledge base
+    case 'search_legal_terms': return '법령용어 검색 완료'
+    case 'get_legal_term_kb': return '법령용어 지식베이스 조회 완료'
+    case 'get_legal_term_detail': return '법령용어 상세 조회 완료'
+    case 'get_daily_term': return '일상용어 검색 완료'
+    case 'get_daily_to_legal': return '일상→법률 용어 변환 완료'
+    case 'get_legal_to_daily': return '법률→일상 용어 변환 완료'
+    case 'get_term_articles': return '용어 관련 조문 조회 완료'
+    case 'get_related_laws': return '관련 법령 조회 완료'
+    case 'get_law_statistics': return '법령 통계 조회 완료'
+    case 'suggest_law_names': return '법령명 자동완성 완료'
+    case 'compare_articles': return '조문 비교 완료'
+    case 'parse_article_links': return '조문 참조 분석 완료'
+    case 'extract_precedent_keywords': return '판례 키워드 추출 완료'
+    case 'summarize_precedent': return '판례 요약 완료'
+    case 'search_english_law': return '영문 법령 검색 완료'
+    case 'get_english_law_text': return '영문 법령 조회 완료'
     default: return '완료'
   }
 }

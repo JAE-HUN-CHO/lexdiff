@@ -314,7 +314,10 @@ export async function POST(request: NextRequest) {
           traceLogger.completeTrace(traceId, 'gemini')
         }
 
-        sendAndLog({ type: 'source', source })
+        // Vercel+Claude 경로: Bridge(openclaw-client.ts)가 이미 source:'openclaw' 전송 → 중복 방지
+        if (!(process.env.VERCEL && source === 'claude')) {
+          sendAndLog({ type: 'source', source })
+        }
 
         // ── 질의 로그 기록 ──
         appendQueryLog({

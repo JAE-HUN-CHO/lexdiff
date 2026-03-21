@@ -5,7 +5,7 @@
  * A방향: 상위법령 변경 시 영향받는 조례 탐색
  */
 
-import { LawApiClient } from 'korean-law-mcp/build/lib/api-client.js'
+import { LawApiClient } from 'korean-law-mcp/lib/api-client'
 
 // ── 타입 ──
 

@@ -4,42 +4,23 @@ import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import { CopyButton } from "@/components/ui/copy-button"
 import { LawViewerAnalysisMenu } from "./law-viewer-analysis-menu"
-import type { LawArticle, LawMeta } from "@/lib/law-types"
+import { useLawViewerContext } from "./law-viewer-context"
+import type { LawArticle } from "@/lib/law-types"
 
 interface LawViewerOrdinanceActionsProps {
-  isOrdinance: boolean
   actualArticles: LawArticle[]
-  fontSize: number
-  increaseFontSize: () => void
-  decreaseFontSize: () => void
-  resetFontSize: () => void
-  openLawCenter: () => void
-  onRefresh?: () => void
-  formatSimpleJo: (jo: string, forceOrdinance?: boolean) => string
-  // 분석 도구
-  meta?: LawMeta
-  onTimeMachine?: (meta: LawMeta) => void
-  onImpactTracker?: (lawName: string) => void
-  onOrdinanceSync?: (lawName: string) => void
-  onOrdinanceBenchmark?: (lawName: string) => void
 }
 
 export function LawViewerOrdinanceActions({
-  isOrdinance,
   actualArticles,
-  fontSize,
-  increaseFontSize,
-  decreaseFontSize,
-  resetFontSize,
-  openLawCenter,
-  onRefresh,
-  formatSimpleJo,
-  meta,
-  onTimeMachine,
-  onImpactTracker,
-  onOrdinanceSync,
-  onOrdinanceBenchmark,
 }: LawViewerOrdinanceActionsProps) {
+  const {
+    isOrdinance, isPrecedent, meta,
+    fontSize, increaseFontSize, decreaseFontSize, resetFontSize,
+    openLawCenter, onRefresh, formatSimpleJo,
+    onTimeMachine, onImpactTracker, onOrdinanceSync, onOrdinanceBenchmark,
+  } = useLawViewerContext()
+
   if (!isOrdinance) {
     return null
   }
@@ -56,7 +37,7 @@ export function LawViewerOrdinanceActions({
           <LawViewerAnalysisMenu
             meta={meta}
             isOrdinance={isOrdinance}
-            isPrecedent={false}
+            isPrecedent={isPrecedent}
             onTimeMachine={onTimeMachine}
             onImpactTracker={onImpactTracker}
             onOrdinanceSync={onOrdinanceSync}

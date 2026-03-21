@@ -5,40 +5,40 @@
  * FunctionDeclaration으로 변환 + 실행하는 얇은 브릿지 레이어.
  *
  * ── LLM 구성 ──
- * Primary : Sonnet 4.6 (Claude) — OpenClaw Bridge 경유
- * Fallback: Gemini Flash — Bridge 불능 시 engine.ts에서 직접 호출
+ * Primary : Sonnet 4.6 (Claude) — CLI subprocess (로컬) 또는 Bridge 프록시 (Vercel)
+ * Fallback: Gemini Flash — Claude 불능 시 engine.ts에서 직접 호출
  *
  * 도구 스키마/핸들러는 양쪽 LLM이 공유.
  */
 
-import { LawApiClient } from 'korean-law-mcp/build/lib/api-client.js'
+import { LawApiClient } from 'korean-law-mcp/lib/api-client'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 
 // ── Tier 0: Core search & retrieval ──
-import { searchLaw, SearchLawSchema } from 'korean-law-mcp/build/tools/search.js'
-import { getLawText, GetLawTextSchema } from 'korean-law-mcp/build/tools/law-text.js'
-import { searchPrecedents, searchPrecedentsSchema, getPrecedentText, getPrecedentTextSchema } from 'korean-law-mcp/build/tools/precedents.js'
-import { searchInterpretations, searchInterpretationsSchema, getInterpretationText, getInterpretationTextSchema } from 'korean-law-mcp/build/tools/interpretations.js'
-import { searchAiLaw, searchAiLawSchema } from 'korean-law-mcp/build/tools/life-law.js'
-import { getBatchArticles, GetBatchArticlesSchema } from 'korean-law-mcp/build/tools/batch-articles.js'
+import { searchLaw, SearchLawSchema } from 'korean-law-mcp/tools/search'
+import { getLawText, GetLawTextSchema } from 'korean-law-mcp/tools/law-text'
+import { searchPrecedents, searchPrecedentsSchema, getPrecedentText, getPrecedentTextSchema } from 'korean-law-mcp/tools/precedents'
+import { searchInterpretations, searchInterpretationsSchema, getInterpretationText, getInterpretationTextSchema } from 'korean-law-mcp/tools/interpretations'
+import { searchAiLaw, searchAiLawSchema } from 'korean-law-mcp/tools/life-law'
+import { getBatchArticles, GetBatchArticlesSchema } from 'korean-law-mcp/tools/batch-articles'
 
 // ── Tier 1-2: Comparison / Structure / History ──
-import { getThreeTier, GetThreeTierSchema } from 'korean-law-mcp/build/tools/three-tier.js'
-import { compareOldNew, CompareOldNewSchema } from 'korean-law-mcp/build/tools/comparison.js'
-import { getArticleHistory, ArticleHistorySchema } from 'korean-law-mcp/build/tools/article-history.js'
-import { searchOrdinance, SearchOrdinanceSchema } from 'korean-law-mcp/build/tools/ordinance-search.js'
-import { getOrdinance, GetOrdinanceSchema } from 'korean-law-mcp/build/tools/ordinance.js'
-import { advancedSearch, AdvancedSearchSchema } from 'korean-law-mcp/build/tools/advanced-search.js'
-import { getAnnexes, GetAnnexesSchema } from 'korean-law-mcp/build/tools/annex.js'
-import { findSimilarPrecedents, FindSimilarPrecedentsSchema } from 'korean-law-mcp/build/tools/similar-precedents.js'
-import { getLawTree, GetLawTreeSchema } from 'korean-law-mcp/build/tools/law-tree.js'
-import { searchAll, SearchAllSchema } from 'korean-law-mcp/build/tools/search-all.js'
+import { getThreeTier, GetThreeTierSchema } from 'korean-law-mcp/tools/three-tier'
+import { compareOldNew, CompareOldNewSchema } from 'korean-law-mcp/tools/comparison'
+import { getArticleHistory, ArticleHistorySchema } from 'korean-law-mcp/tools/article-history'
+import { searchOrdinance, SearchOrdinanceSchema } from 'korean-law-mcp/tools/ordinance-search'
+import { getOrdinance, GetOrdinanceSchema } from 'korean-law-mcp/tools/ordinance'
+import { advancedSearch, AdvancedSearchSchema } from 'korean-law-mcp/tools/advanced-search'
+import { getAnnexes, GetAnnexesSchema } from 'korean-law-mcp/tools/annex'
+import { findSimilarPrecedents, FindSimilarPrecedentsSchema } from 'korean-law-mcp/tools/similar-precedents'
+import { getLawTree, GetLawTreeSchema } from 'korean-law-mcp/tools/law-tree'
+import { searchAll, SearchAllSchema } from 'korean-law-mcp/tools/search-all'
 
 // ── Composite: 조문+판례 동시 조회 ──
-import { getArticleWithPrecedents, GetArticleWithPrecedentsSchema } from 'korean-law-mcp/build/tools/article-with-precedents.js'
+import { getArticleWithPrecedents, GetArticleWithPrecedentsSchema } from 'korean-law-mcp/tools/article-with-precedents'
 
 // ── Admin rules (행정규칙: 훈령/예규/고시) ──
-import { searchAdminRule, SearchAdminRuleSchema, getAdminRule, GetAdminRuleSchema } from 'korean-law-mcp/build/tools/admin-rule.js'
+import { searchAdminRule, SearchAdminRuleSchema, getAdminRule, GetAdminRuleSchema } from 'korean-law-mcp/tools/admin-rule'
 
 // ── Chain tools (multi-step macros — 내부에서 여러 도구 자동 연쇄, 턴 수 절감) ──
 import {
@@ -49,21 +49,53 @@ import {
   chainLawSystem, chainLawSystemSchema,
   chainAmendmentTrack, chainAmendmentTrackSchema,
   chainOrdinanceCompare, chainOrdinanceCompareSchema,
-} from 'korean-law-mcp/build/tools/chains.js'
+} from 'korean-law-mcp/tools/chains'
 
 // ── Domain specialist tools ──
-import { searchAdminAppeals, searchAdminAppealsSchema, getAdminAppealText, getAdminAppealTextSchema } from 'korean-law-mcp/build/tools/admin-appeals.js'
-import { searchConstitutionalDecisions, searchConstitutionalDecisionsSchema, getConstitutionalDecisionText, getConstitutionalDecisionTextSchema } from 'korean-law-mcp/build/tools/constitutional-decisions.js'
-import { searchTaxTribunalDecisions, searchTaxTribunalDecisionsSchema, getTaxTribunalDecisionText, getTaxTribunalDecisionTextSchema } from 'korean-law-mcp/build/tools/tax-tribunal-decisions.js'
-import { searchCustomsInterpretations, searchCustomsInterpretationsSchema, getCustomsInterpretationText, getCustomsInterpretationTextSchema } from 'korean-law-mcp/build/tools/customs-interpretations.js'
+import { searchAdminAppeals, searchAdminAppealsSchema, getAdminAppealText, getAdminAppealTextSchema } from 'korean-law-mcp/tools/admin-appeals'
+import { searchConstitutionalDecisions, searchConstitutionalDecisionsSchema, getConstitutionalDecisionText, getConstitutionalDecisionTextSchema } from 'korean-law-mcp/tools/constitutional-decisions'
+import { searchTaxTribunalDecisions, searchTaxTribunalDecisionsSchema, getTaxTribunalDecisionText, getTaxTribunalDecisionTextSchema } from 'korean-law-mcp/tools/tax-tribunal-decisions'
+import { searchCustomsInterpretations, searchCustomsInterpretationsSchema, getCustomsInterpretationText, getCustomsInterpretationTextSchema } from 'korean-law-mcp/tools/customs-interpretations'
 import {
   searchFtcDecisions, searchFtcDecisionsSchema, getFtcDecisionText, getFtcDecisionTextSchema,
   searchPipcDecisions, searchPipcDecisionsSchema, getPipcDecisionText, getPipcDecisionTextSchema,
   searchNlrcDecisions, searchNlrcDecisionsSchema, getNlrcDecisionText, getNlrcDecisionTextSchema,
-} from 'korean-law-mcp/build/tools/committee-decisions.js'
+} from 'korean-law-mcp/tools/committee-decisions'
 
 // ── Historical ──
-import { getLawHistory, LawHistorySchema } from 'korean-law-mcp/build/tools/law-history.js'
+import { getLawHistory, LawHistorySchema } from 'korean-law-mcp/tools/law-history'
+import { searchHistoricalLaw, searchHistoricalLawSchema, getHistoricalLaw, getHistoricalLawSchema } from 'korean-law-mcp/tools/historical-law'
+
+// ── Tier 2: Structural (법체계/외부링크) ──
+import { getLawSystemTree, getLawSystemTreeSchema } from 'korean-law-mcp/tools/law-system-tree'
+import { getExternalLinks, ExternalLinksSchema } from 'korean-law-mcp/tools/external-links'
+
+// ── Tier 3: Legal terms, Knowledge base, Statistics, Autocomplete ──
+import { searchLegalTerms, searchLegalTermsSchema } from 'korean-law-mcp/tools/legal-terms'
+import {
+  getLegalTermKB, getLegalTermKBSchema,
+  getLegalTermDetail, getLegalTermDetailSchema,
+  getDailyTerm, getDailyTermSchema,
+  getDailyToLegal, getDailyToLegalSchema,
+  getLegalToDaily, getLegalToDailySchema,
+  getTermArticles, getTermArticlesSchema,
+  getRelatedLaws, getRelatedLawsSchema,
+} from 'korean-law-mcp/tools/knowledge-base'
+import { getLawStatistics, LawStatisticsSchema } from 'korean-law-mcp/tools/law-statistics'
+import { suggestLawNames, SuggestLawNamesSchema } from 'korean-law-mcp/tools/autocomplete'
+
+// ── Tier 3: Article compare, Link parser, Precedent utils, English law ──
+import { compareArticles, CompareArticlesSchema } from 'korean-law-mcp/tools/article-compare'
+import { parseArticleLinks, ParseArticleLinksSchema } from 'korean-law-mcp/tools/article-link-parser'
+import { extractPrecedentKeywords, ExtractKeywordsSchema } from 'korean-law-mcp/tools/precedent-keywords'
+import { summarizePrecedent, SummarizePrecedentSchema } from 'korean-law-mcp/tools/precedent-summary'
+import { searchEnglishLaw, searchEnglishLawSchema, getEnglishLawText, getEnglishLawTextSchema } from 'korean-law-mcp/tools/english-law'
+
+// ── Easy Law (생활법령 콘텐츠) ──
+import { getLifeLawCategories, getLifeLawCategoriesSchema, getLifeLawDetail, getLifeLawDetailSchema, getLifeLawFaq, getLifeLawFaqSchema, searchLifeLawContent, searchLifeLawContentSchema } from 'korean-law-mcp/tools/easy-law'
+
+// ── Utils (조문번호 변환) ──
+import { parseJoCode, ParseJoCodeSchema } from 'korean-law-mcp/tools/utils'
 
 import type { FunctionDeclaration } from '@google/genai'
 
@@ -131,6 +163,36 @@ const CACHE_TTL: Record<string, number> = {
   chain_law_system: 6 * 3600_000,
   chain_amendment_track: 6 * 3600_000,
   chain_ordinance_compare: 6 * 3600_000,
+  // Tier 2: Structural / Historical
+  get_law_system_tree: 24 * 3600_000,
+  get_external_links: 24 * 3600_000,
+  search_historical_law: 12 * 3600_000,
+  get_historical_law: 24 * 3600_000,
+  // Tier 3: Legal terms / Knowledge base
+  search_legal_terms: 12 * 3600_000,
+  get_legal_term_kb: 12 * 3600_000,
+  get_legal_term_detail: 24 * 3600_000,
+  get_daily_term: 12 * 3600_000,
+  get_daily_to_legal: 24 * 3600_000,
+  get_legal_to_daily: 24 * 3600_000,
+  get_term_articles: 12 * 3600_000,
+  get_related_laws: 12 * 3600_000,
+  get_law_statistics: 6 * 3600_000,
+  suggest_law_names: 6 * 3600_000,
+  // Tier 3: Compare / Parser / Precedent / English
+  compare_articles: 24 * 3600_000,
+  parse_article_links: 24 * 3600_000,
+  extract_precedent_keywords: 24 * 3600_000,
+  summarize_precedent: 24 * 3600_000,
+  search_english_law: 12 * 3600_000,
+  get_english_law_text: 24 * 3600_000,
+  // Easy Law (생활법령)
+  get_life_law_categories: 24 * 3600_000,
+  get_life_law_detail: 24 * 3600_000,
+  get_life_law_faq: 24 * 3600_000,
+  search_life_law_content: 6 * 3600_000,
+  // Utils
+  parse_jo_code: 24 * 3600_000,
 }
 
 const CACHE_MAX_SIZE = 2000
@@ -459,6 +521,184 @@ const TOOLS: ToolDef[] = [
     description: '노동위 결정 전문 조회. id 필요.',
     schema: getNlrcDecisionTextSchema,
     handler: getNlrcDecisionText,
+  },
+
+  // ══════════════════════════════════════
+  // Tier 2: Structural / Historical (추가)
+  // ══════════════════════════════════════
+  {
+    name: 'get_law_system_tree',
+    description: '법령 체계 분류(소관부처별 법령 트리) 조회.',
+    schema: getLawSystemTreeSchema,
+    handler: getLawSystemTree,
+  },
+  {
+    name: 'get_external_links',
+    description: '법제처/법원도서관 외부 링크 생성.',
+    schema: ExternalLinksSchema,
+    handler: (_client, input) => getExternalLinks(input),
+  },
+  {
+    name: 'search_historical_law',
+    description: '과거 법령 연혁 검색. 법령명으로 이전 버전 목록.',
+    schema: searchHistoricalLawSchema,
+    handler: searchHistoricalLaw,
+  },
+  {
+    name: 'get_historical_law',
+    description: '과거 시점 법령 조문 조회. mst+jo.',
+    schema: getHistoricalLawSchema,
+    handler: getHistoricalLaw,
+  },
+
+  // ══════════════════════════════════════
+  // Tier 3: Legal Terms / Knowledge Base
+  // ══════════════════════════════════════
+  {
+    name: 'search_legal_terms',
+    description: '법령용어 검색. 정의/설명 포함.',
+    schema: searchLegalTermsSchema,
+    handler: searchLegalTerms,
+  },
+  {
+    name: 'get_legal_term_kb',
+    description: '법령용어 지식베이스 검색.',
+    schema: getLegalTermKBSchema,
+    handler: getLegalTermKB,
+  },
+  {
+    name: 'get_legal_term_detail',
+    description: '법령용어 상세 정보 조회.',
+    schema: getLegalTermDetailSchema,
+    handler: getLegalTermDetail,
+  },
+  {
+    name: 'get_daily_term',
+    description: '일상용어로 법령용어 검색.',
+    schema: getDailyTermSchema,
+    handler: getDailyTerm,
+  },
+  {
+    name: 'get_daily_to_legal',
+    description: '일상용어→법률용어 변환.',
+    schema: getDailyToLegalSchema,
+    handler: getDailyToLegal,
+  },
+  {
+    name: 'get_legal_to_daily',
+    description: '법률용어→일상용어 변환.',
+    schema: getLegalToDailySchema,
+    handler: getLegalToDaily,
+  },
+  {
+    name: 'get_term_articles',
+    description: '특정 용어가 사용된 조문 목록.',
+    schema: getTermArticlesSchema,
+    handler: getTermArticles,
+  },
+  {
+    name: 'get_related_laws',
+    description: '관련 법령 목록 조회. lawId 또는 lawName.',
+    schema: getRelatedLawsSchema,
+    handler: getRelatedLaws,
+  },
+
+  // ══════════════════════════════════════
+  // Tier 3: Statistics / Autocomplete
+  // ══════════════════════════════════════
+  {
+    name: 'get_law_statistics',
+    description: '최근 공포/시행 법령 통계.',
+    schema: LawStatisticsSchema,
+    handler: getLawStatistics,
+  },
+  {
+    name: 'suggest_law_names',
+    description: '법령명 자동완성. 부분 입력→후보 목록.',
+    schema: SuggestLawNamesSchema,
+    handler: suggestLawNames,
+  },
+
+  // ══════════════════════════════════════
+  // Tier 3: Compare / Parser / Precedent Utils
+  // ══════════════════════════════════════
+  {
+    name: 'compare_articles',
+    description: '두 법령 조문 비교. law1/law2 각각 mst+jo.',
+    schema: CompareArticlesSchema,
+    handler: compareArticles,
+  },
+  {
+    name: 'parse_article_links',
+    description: '조문 내 참조 링크(타법 인용) 파싱.',
+    schema: ParseArticleLinksSchema,
+    handler: parseArticleLinks,
+  },
+  {
+    name: 'extract_precedent_keywords',
+    description: '판례 키워드 추출. id 필요.',
+    schema: ExtractKeywordsSchema,
+    handler: extractPrecedentKeywords,
+  },
+  {
+    name: 'summarize_precedent',
+    description: '판례 요약 생성. id 필요.',
+    schema: SummarizePrecedentSchema,
+    handler: summarizePrecedent,
+  },
+
+  // ══════════════════════════════════════
+  // Tier 3: English Law
+  // ══════════════════════════════════════
+  {
+    name: 'search_english_law',
+    description: '영문 법령 검색.',
+    schema: searchEnglishLawSchema,
+    handler: searchEnglishLaw,
+  },
+  {
+    name: 'get_english_law_text',
+    description: '영문 법령 전문 조회.',
+    schema: getEnglishLawTextSchema,
+    handler: getEnglishLawText,
+  },
+
+  // ══════════════════════════════════════
+  // Easy Law (생활법령 콘텐츠)
+  // ══════════════════════════════════════
+  {
+    name: 'get_life_law_categories',
+    description: '생활법령 카테고리 목록 조회.',
+    schema: getLifeLawCategoriesSchema,
+    handler: getLifeLawCategories,
+  },
+  {
+    name: 'get_life_law_detail',
+    description: '생활법령 콘텐츠 상세 조회. id 필요.',
+    schema: getLifeLawDetailSchema,
+    handler: getLifeLawDetail,
+  },
+  {
+    name: 'get_life_law_faq',
+    description: '생활법령 FAQ 조회. id 필요.',
+    schema: getLifeLawFaqSchema,
+    handler: getLifeLawFaq,
+  },
+  {
+    name: 'search_life_law_content',
+    description: '생활법령 콘텐츠 검색. 일상 질문→생활법령.',
+    schema: searchLifeLawContentSchema,
+    handler: searchLifeLawContent,
+  },
+
+  // ══════════════════════════════════════
+  // Utils (조문번호 변환)
+  // ══════════════════════════════════════
+  {
+    name: 'parse_jo_code',
+    description: '조문번호↔JO코드 변환. "제38조"↔"003800".',
+    schema: ParseJoCodeSchema,
+    handler: (_client, input) => parseJoCode(input),
   },
 ]
 

@@ -32,7 +32,7 @@ import { useSwipe } from "@/hooks/use-swipe"
 import { useRelatedPrecedentCases } from "@/hooks/use-related-precedent-cases"
 import { debugLogger } from '@/lib/debug-logger'
 import type { VerifiedCitation } from '@/lib/citation-verifier'
-import { LawViewerActionButtons, LawViewerRelatedCases, LawViewerOrdinanceActions, LawViewerSidebar, LawViewerHeader, LawViewerMainContent } from "@/components/law-viewer/index"
+import { LawViewerActionButtons, LawViewerRelatedCases, LawViewerOrdinanceActions, LawViewerSidebar, LawViewerHeader, LawViewerMainContent, LawViewerProvider, type LawViewerContextValue } from "@/components/law-viewer/index"
 
 interface LawViewerProps {
   meta?: LawMeta
@@ -734,6 +734,38 @@ function LawViewerComponent({
     }
   }, [tierViewMode, threeTierDelegation, threeTierCitation, fetchThreeTierData, setTierViewMode, meta, openAnnexModal, setShowPrecedents])
 
+  // ─── LawViewerContext value ───
+  const ctxValue: LawViewerContextValue = useMemo(() => ({
+    meta,
+    isPrecedent,
+    isOrdinance,
+    aiAnswerMode,
+    viewMode,
+    fontSize,
+    increaseFontSize,
+    decreaseFontSize,
+    resetFontSize,
+    favorites,
+    isFavorite,
+    favoriteKey,
+    onToggleFavorite,
+    onCompare,
+    onSummarize,
+    onRefresh,
+    onDelegationGap,
+    onTimeMachine,
+    onImpactTracker,
+    onOrdinanceSync,
+    onOrdinanceBenchmark,
+    openLawCenter,
+    formatSimpleJo,
+  }), [
+    meta, isPrecedent, isOrdinance, aiAnswerMode, viewMode,
+    fontSize, favorites, onToggleFavorite, onCompare, onSummarize, onRefresh,
+    onDelegationGap, onTimeMachine, onImpactTracker, onOrdinanceSync, onOrdinanceBenchmark,
+    openLawCenter, formatSimpleJo,
+  ])
+
   // Props 그룹화 (LawViewerMainContent용)
   const fontProps = useMemo(() => ({
     fontSize,
@@ -799,7 +831,7 @@ function LawViewerComponent({
   }), [showPrecedents, precedentViewMode, precedentPanelSize, precedents, precedentTotalCount, loadingPrecedents, precedentsError, selectedPrecedent, loadingPrecedentDetail])
 
   return (
-    <>
+    <LawViewerProvider value={ctxValue}>
       <div className="w-full max-w-full mx-auto lg:max-w-[1280px] overflow-hidden">
         <div
           className={`relative grid gap-0 sm:gap-4 min-h-0 lg:h-[calc(100vh-80px)] ${
@@ -811,26 +843,18 @@ function LawViewerComponent({
         >
           {/* Left Sidebar + Mobile Bottom Sheet + FAB */}
           <LawViewerSidebar
-            aiAnswerMode={aiAnswerMode}
-            isPrecedent={isPrecedent}
-            isOrdinance={isOrdinance}
             isArticleListCollapsed={isArticleListCollapsed}
             setIsArticleListCollapsed={setIsArticleListCollapsed}
             isArticleListExpanded={isArticleListExpanded}
             setIsArticleListExpanded={setIsArticleListExpanded}
-            meta={meta}
             actualArticles={actualArticles}
             relatedArticles={relatedArticles}
             mergedRelatedArticles={mergedRelatedArticles}
             activeJo={activeJo}
             loadingJo={loadingJo}
-            favorites={favorites}
             isStreaming={isStreaming}
             handleArticleClick={handleArticleClick}
             openExternalLawArticleModal={openExternalLawArticleModal}
-            onToggleFavorite={onToggleFavorite}
-            formatSimpleJo={formatSimpleJo}
-            isFavorite={isFavorite}
           />
 
           {/* Right panel - Article content */}
@@ -853,15 +877,6 @@ function LawViewerComponent({
 
             {/* Action Buttons */}
             <LawViewerActionButtons
-              isPrecedent={isPrecedent}
-              isOrdinance={isOrdinance}
-              aiAnswerMode={aiAnswerMode}
-              meta={meta}
-              onDelegationGap={onDelegationGap}
-              onTimeMachine={onTimeMachine}
-              onImpactTracker={onImpactTracker}
-              onOrdinanceSync={onOrdinanceSync}
-              onOrdinanceBenchmark={onOrdinanceBenchmark}
               activeArticle={activeArticle ?? null}
               actualArticles={actualArticles}
               hasLevelSection={hasLevelSection}
@@ -869,18 +884,6 @@ function LawViewerComponent({
               setShowRelatedCases={setShowRelatedCases}
               loadingRelatedCases={loadingRelatedCases}
               relatedCases={relatedCases}
-              favorites={favorites}
-              isFavorite={isFavorite}
-              favoriteKey={favoriteKey}
-              onToggleFavorite={onToggleFavorite}
-              fontSize={fontSize}
-              increaseFontSize={increaseFontSize}
-              decreaseFontSize={decreaseFontSize}
-              resetFontSize={resetFontSize}
-              onCompare={onCompare}
-              onSummarize={onSummarize}
-              onRefresh={onRefresh}
-              openLawCenter={openLawCenter}
               tierViewMode={tierViewMode}
               setTierViewMode={setTierViewMode}
               threeTierDelegation={threeTierDelegation}
@@ -908,20 +911,7 @@ function LawViewerComponent({
 
             {/* 조례 전용 액션 버튼 */}
             <LawViewerOrdinanceActions
-              isOrdinance={isOrdinance}
               actualArticles={actualArticles}
-              fontSize={fontSize}
-              increaseFontSize={increaseFontSize}
-              decreaseFontSize={decreaseFontSize}
-              resetFontSize={resetFontSize}
-              openLawCenter={openLawCenter}
-              onRefresh={onRefresh}
-              formatSimpleJo={formatSimpleJo}
-              meta={meta}
-              onTimeMachine={onTimeMachine}
-              onImpactTracker={onImpactTracker}
-              onOrdinanceSync={onOrdinanceSync}
-              onOrdinanceBenchmark={onOrdinanceBenchmark}
             />
 
             <LawViewerMainContent
@@ -1001,7 +991,7 @@ function LawViewerComponent({
           )
         }
       </div>
-    </>
+    </LawViewerProvider>
   )
 }
 

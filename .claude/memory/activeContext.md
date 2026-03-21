@@ -1,58 +1,73 @@
 # Active Context
 
-**마지막 업데이트**: 2026-02-26 (Phase B+C 구현 완료, 빌드 통과)
+**마지막 업데이트**: 2026-03-16 (쿼리 확장 엔진 4차 검증 + 법령 검색 확장 + 차세대 개선안)
 
 ## 현재 상태
 
-**2차 FC-RAG 확장: Phase B(동적 턴) + Phase C(도구 확장) 구현 완료. 빌드 성공. 미커밋.**
+**쿼리 확장 엔진 4차 실전 검증 완료.** Phase A~F 전체 수행 + 법령 검색까지 확장. 차세대 개선안(LLM 자동보강 + 하이브리드 검색) PRD 확정.
 
-### 미커밋 변경사항 (중요!)
+## 프로젝트 관계 (중요!)
 
-**이전 세션 미커밋 (여전히 미커밋)**:
-1. Turso/DB 레거시 전체 삭제 (~30파일), admin 전체 삭제
-2. Zod parse 버그 수정, BYO-Key 구현
-3. 토큰 최적화 (MAX_RESULT_LENGTH, 압축, auto-chain, prompt 슬림화, citation 필터)
+| 레포 | 역할 | 실행 환경 |
+|------|------|----------|
+| **lexdiff** | 웹앱 (Next.js) — 자체 FC-RAG 엔진 (`lib/fc-rag/`) | Vercel/로컬 |
+| **chrisbot** (`github.com/chrisryugj/chrisbot`) | 미니PC 봇 — Bridge + nanobot | 미니PC (Mong NAS) |
 
-**이번 세션 변경**:
-4. `lib/fc-rag/engine.ts`: B-1 동적 턴 (이전 세션에서 완료)
-5. `lib/fc-rag/engine.ts`: B-2 inferComplexity 복합 질문 패턴 강화 (complex/moderate 키워드 패턴 추가)
-6. `lib/fc-rag/engine.ts`: B-4 도구 실패 제외 로직 (failureCount Map, 연속 2회 실패 시 다음 턴에서 제외)
-7. `lib/fc-rag/tool-adapter.ts`: C-1 도구 5→9개 확장 (get_interpretation_text, get_three_tier, compare_old_new, get_article_history)
-8. `lib/fc-rag/engine.ts`: C-2 auto-chain 3개로 확장 (해석례 전문 자동 조회, 개정 키워드 시 신구법 대조 자동)
-9. `lib/fc-rag/engine.ts`: C-3 citation 빌더 확장 (4개 신규 도구 결과 파싱)
-10. `app/api/fc-rag/route.ts`: 응답에 complexity 필드 추가
-11. `useAiSearch.ts`: B-3 프로그레스 타이머 complexity 기반 속도 조절 (200/300/400ms)
-12. `lib/fc-rag/engine.ts`: FCRAGResult에 complexity 필드 추가
+**두 시스템은 완전 별개 파이프라인.** lexdiff FC-RAG 수정 ≠ nanobot 수정.
 
-### ✅ 완료된 작업 (이번 세션)
+### ✅ 완료된 작업 (2026-03-15~16)
 
 | 작업 | 파일 | 상태 |
 |------|------|------|
-| B-2: inferComplexity 패턴 강화 | `engine.ts:329-345` | ✅ |
-| B-4: 도구 실패 제외 로직 | `engine.ts:126,135-138,235-242` | ✅ |
-| C-1: tool-adapter 도구 4개 추가 | `tool-adapter.ts:15-20,64-92` | ✅ |
-| C-2: auto-chain 확장 (3개 체인) | `engine.ts:251-301` | ✅ |
-| C-3: citation 빌더 확장 | `engine.ts:407-471` | ✅ |
-| B-3: 프로그레스 타이머 조절 | `useAiSearch.ts:108-123` | ✅ |
-| 빌드 검증 | - | ✅ 통과 |
+| Phase A: 확장 Lift 50개 쿼리 | `lib/query-expansion.ts` | ✅ 96% 개선율, no_help 4% |
+| Phase B: Precision 10개 쿼리 | `lib/query-expansion.ts` | ✅ 99% (머징+리랭킹 후) |
+| Phase C: 사전 Gap 발견 + 보강 | `lib/query-expansion.ts` | ✅ 강아지/식당/킥보드 등 추가 |
+| Phase D: 자연어 질의 18/20 | `lib/query-expansion.ts` | ✅ 전처리 파이프라인 추가 |
+| Phase F: 자동완성 연동 | `app/api/search-suggest/route.ts` | ✅ 7/10 쿼리에서 확장 효과 |
+| 동의어 세분화 (택시/버스) | `lib/query-expansion.ts` | ✅ precision 60%→100% |
+| 결과 머징+리랭킹 | `useBasicSearch.ts` | ✅ 상위3전략 병렬→RRF |
+| **법령 검색 확장** | `useBasicSearch.ts` | ✅ expandForLawSearch 병렬 호출 |
+| 자연어 전처리 파이프라인 | `lib/query-expansion.ts` | ✅ stripKoreanSuffix + extractKeywords |
+| 차세대 개선안 PRD | `.claude/plans/query-expansion-next-gen.md` | ✅ 3단계 로드맵 |
 
-### 📋 다음 할 일
-
-- [ ] 커밋 (Phase B+C 완료분)
-- [ ] 실제 테스트 (dev 서버에서 질문별 동작 확인)
-- [ ] Phase D: API Route 정리 (별도 세션, 호환성 검토 필요)
-
-### 2차 계획서
-
-**파일**: `.claude/plans/squishy-wishing-noodle.md`
-**상태**: Phase B+C 완료, Phase D 미착수
-
-## 핵심 파일
+### 쿼리 확장 핵심 파일
 
 | 파일 | 역할 |
 |------|------|
-| `lib/fc-rag/engine.ts` | FC-RAG 엔진 (동적 턴 + 실패 제외 + auto-chain 3개 + citation 9도구) |
-| `lib/fc-rag/tool-adapter.ts` | korean-law-mcp → Gemini FC 변환 (9개 도구) |
-| `app/api/fc-rag/route.ts` | API 엔드포인트 (JSON 응답, BYO-Key, complexity 포함) |
-| `useAiSearch.ts` | 프론트 AI 검색 (complexity 기반 프로그레스 타이머) |
-| `.claude/plans/squishy-wishing-noodle.md` | **2차 계획서** |
+| `lib/query-expansion.ts` | 사전 + 확장 엔진 + 전략 생성 + 전처리 파이프라인 |
+| `components/search-result-view/hooks/useSearchHandlers/useBasicSearch.ts` | 법령/조례 검색 실행 (머징+리랭킹) |
+| `app/api/search-suggest/route.ts` | 자동완성 API (확장 연동) |
+| `app/api/law-search/route.ts` | 법령 검색 API |
+| `app/api/ordin-search/route.ts` | 조례 검색 API |
+
+### 쿼리 확장 최종 수치
+
+| 지표 | 값 |
+|------|-----|
+| 조례 Lift (개선율) | 96% |
+| 조례 Precision | 99% |
+| 법령 Lift (0→N) | 10/12 (83%) |
+| 자동완성 확장 효과 | 7/10 |
+| 통합 커버리지 | 90% |
+
+### 📋 다음 할 일
+
+**쿼리 확장 차세대 (PRD: `.claude/plans/query-expansion-next-gen.md`):**
+- [ ] Phase 1: LLM 사전 자동보강 (1~2주, $2/월)
+  - `lib/server/zero-hit-logger.ts` — 0건 쿼리 로깅
+  - `lib/query-expansion-dynamic.ts` — Redis 동적 사전
+  - `lib/query-expansion-warm.ts` — 비동기 Warm Path
+  - `lib/query-expansion-pipeline.ts` — 배치 파이프라인
+- [ ] Phase 2: 하이브리드 검색 (2~3주, ~$1)
+  - Supabase pgvector + OpenAI/LBox 임베딩
+  - RRF 머징
+- [ ] Phase 3: 조문 검색 + 리랭킹 (1~2개월, $30/월)
+
+**법령 분석 도구 모음 (PRD: `important-docs/19-LAW_ANALYSIS_TOOLKIT_PRD.md`):**
+- [ ] 법령 뷰어 "분석 도구" 드롭다운 메뉴
+- [ ] 위임입법 미비 탐지기
+- [ ] 법령 타임머신
+
+**보류:**
+- [ ] Phase D: API Route 정리
+- [ ] 미니PC OpenClaw Bridge: `format=json` 파라미터 지원

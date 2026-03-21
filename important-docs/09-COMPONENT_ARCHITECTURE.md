@@ -74,7 +74,56 @@
 
 ---
 
-## 5. Key Files (빠른 참조)
+## 5. AI 검색 시스템
+
+### 검색 핸들러 (`search-result-view/hooks/useSearchHandlers/`)
+| 파일 | 역할 |
+|------|------|
+| `useAiSearch.ts` | AI 검색 SSE 소비 핵심 훅 (fetch → stream → 이벤트 처리) |
+| `index.ts` | 검색 핸들러 오케스트레이터 (AI vs 기본 분류) |
+| `useBasicSearch.ts` | 법령 키워드 검색 |
+| `useUnifiedSearch.ts` | 판례/해석례/조세심판 통합 검색 |
+| `useFetchLawContent.ts` | 법령 본문 fetch |
+
+### AI 답변 표시
+| 파일 | 역할 |
+|------|------|
+| `law-viewer-ai-answer.tsx` | AI 답변 Markdown 렌더링 + 인용 링크 |
+| `law-viewer/article-suggestions.tsx` | "AI에게 물어보기" 추천 질의 칩 + 커스텀 입력 |
+| `ai-search-loading/index.tsx` | 로딩 상태 (단계별 진행, 타임라인) |
+| `law-viewer/law-viewer-main-content.tsx` | AI 답변 + 관련 콘텐츠 메인 뷰 |
+
+### 데이터 흐름
+```
+검색 입력 → handleSearchInternal (쿼리 분류)
+  ├─ AI 모드 → handleAiSearch → fetch('/api/fc-rag', {query, preEvidence})
+  │              ↓ SSE 이벤트 루프
+  │              status → addToolCallLog
+  │              tool_call/tool_result → 타임라인 표시
+  │              answer_token → 실시간 답변 누적 (Bridge 경로만)
+  │              answer → 최종 답변 + 인용
+  │              citation_verification → 검증 배지
+  │              source → Claude/Gemini 표시
+  │              ↓
+  │              LawViewer (aiAnswerMode=true) → AIAnswerContent
+  │
+  └─ 기본 모드 → handleBasicSearch → 법령/판례 검색
+```
+
+### preEvidence 즉답 흐름
+```
+LawViewerSingleArticle → ArticleSuggestions
+  ↓ 칩 클릭 또는 커스텀 질의
+onAiQuery(query, preEvidence="「법령명」 제N조 조문내용...")
+  ↓
+fetch('/api/fc-rag', { query, preEvidence })
+  ↓ Claude: 도구 호출 없이 preEvidence만으로 즉답 (0 tool calls)
+answer 이벤트 → 빠른 응답
+```
+
+---
+
+## 6. Key Files (빠른 참조)
 
 ### 핵심
 | 파일 | 역할 |
@@ -96,21 +145,22 @@
 |------|------|
 | `app/api/precedent-search/` | 판례 검색 |
 | `app/api/precedent-detail/` | 판례 상세 |
-| `app/api/file-search-rag/` | AI RAG |
+| `app/api/fc-rag/` | AI FC-RAG (SSE 스트리밍) |
 
 ---
 
-## 6. 환경변수
+## 7. 환경변수
 
 | 변수 | 용도 |
 |------|------|
-| `LAW_OC` | 법제처 API 인증키 |
-| `GEMINI_API_KEY` | Gemini AI |
-| `GEMINI_FILE_SEARCH_STORE_ID` | RAG 스토어 |
+| `LAW_OC` | 법제처 API 인증키 (korean-law-mcp) |
+| `GEMINI_API_KEY` | Gemini AI (폴백) |
+| `OPENCLAW_URL` | OpenClaw Bridge URL (Vercel 전용) |
+| `OPENCLAW_API_TOKEN` | Bridge 인증 토큰 (Vercel 전용) |
 
 ---
 
-## 7. API 응답 형식
+## 8. API 응답 형식
 
 | API | 형식 | 파싱 |
 |-----|------|------|
@@ -120,11 +170,11 @@
 
 ---
 
-## 8. State Management
+## 9. State Management
 
 - **Singleton**: `favorites-store.ts`, `debug-logger.ts`, `error-report-store.ts`
 - **IndexedDB**: `law-content-cache.ts` (7일), `admin-rule-cache.ts` (영구)
 
 ---
 
-**버전**: 1.0 | **업데이트**: 2025-12-24
+**버전**: 2.0 | **업데이트**: 2026-03-21

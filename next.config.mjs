@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // `eslint` top-level option removed in Next.js; ESLint handling should be done via CLI or separate config.
+  // korean-law-mcp의 네이티브 의존성(cfb, pdfjs-dist 등)을 서버사이드 번들링에서 제외
+  serverExternalPackages: ['korean-law-mcp', 'cfb', 'pdfjs-dist'],
   images: {
     unoptimized: true,
   },

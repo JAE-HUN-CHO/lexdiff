@@ -4,27 +4,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Icon } from "@/components/ui/icon"
 import { CopyButton } from "@/components/ui/copy-button"
-import { LawViewerAnalysisMenu, type LawViewerAnalysisMenuProps } from "./law-viewer-analysis-menu"
-import { cn } from "@/lib/utils"
-import type { LawArticle, LawMeta } from "@/lib/law-types"
+import { LawViewerAnalysisMenu } from "./law-viewer-analysis-menu"
+import { useLawViewerContext } from "./law-viewer-context"
+import type { LawArticle } from "@/lib/law-types"
 import type { PrecedentSearchResult } from "@/lib/precedent-parser"
 
 interface LawViewerActionButtonsProps {
-  // 타입 판별
-  isPrecedent: boolean
-  isOrdinance: boolean
-  aiAnswerMode: boolean
-
-  // 법령 메타 (분석 도구 드롭다운용)
-  meta?: LawMeta
-
-  // 분석 도구 콜백
-  onDelegationGap?: (meta: LawMeta) => void
-  onTimeMachine?: (meta: LawMeta) => void
-  onImpactTracker?: (lawName: string) => void
-  onOrdinanceSync?: (lawName: string) => void
-  onOrdinanceBenchmark?: (lawName: string) => void
-
   // 데이터
   activeArticle: LawArticle | null
   actualArticles: LawArticle[]
@@ -35,24 +20,6 @@ interface LawViewerActionButtonsProps {
   setShowRelatedCases: (v: boolean) => void
   loadingRelatedCases: boolean
   relatedCases: PrecedentSearchResult[]
-
-  // 즐겨찾기
-  favorites: Set<string>
-  isFavorite: (jo: string) => boolean
-  favoriteKey: (jo: string) => string
-  onToggleFavorite?: (jo: string) => void
-
-  // 글자크기
-  fontSize: number
-  increaseFontSize: () => void
-  decreaseFontSize: () => void
-  resetFontSize: () => void
-
-  // 콜백
-  onCompare?: (jo: string) => void
-  onSummarize?: (jo: string) => void
-  onRefresh?: () => void
-  openLawCenter: () => void
 
   // 위임법령
   tierViewMode: "1-tier" | "2-tier" | "3-tier"
@@ -74,15 +41,6 @@ interface LawViewerActionButtonsProps {
 }
 
 export function LawViewerActionButtons({
-  isPrecedent,
-  isOrdinance,
-  aiAnswerMode,
-  meta,
-  onDelegationGap,
-  onTimeMachine,
-  onImpactTracker,
-  onOrdinanceSync,
-  onOrdinanceBenchmark,
   activeArticle,
   actualArticles,
   hasLevelSection,
@@ -90,18 +48,6 @@ export function LawViewerActionButtons({
   setShowRelatedCases,
   loadingRelatedCases,
   relatedCases,
-  favorites,
-  isFavorite,
-  favoriteKey,
-  onToggleFavorite,
-  fontSize,
-  increaseFontSize,
-  decreaseFontSize,
-  resetFontSize,
-  onCompare,
-  onSummarize,
-  onRefresh,
-  openLawCenter,
   tierViewMode,
   setTierViewMode,
   threeTierDelegation,
@@ -117,6 +63,14 @@ export function LawViewerActionButtons({
   setShowPrecedents,
   precedentTotalCount,
 }: LawViewerActionButtonsProps) {
+  const {
+    isPrecedent, isOrdinance, aiAnswerMode, meta,
+    fontSize, increaseFontSize, decreaseFontSize, resetFontSize,
+    favorites, isFavorite, favoriteKey, onToggleFavorite,
+    onCompare, onSummarize, onRefresh, openLawCenter,
+    onDelegationGap, onTimeMachine, onImpactTracker, onOrdinanceSync, onOrdinanceBenchmark,
+  } = useLawViewerContext()
+
   // AI 답변 모드이거나 activeArticle이 없으면 렌더링하지 않음
   if (aiAnswerMode || (!activeArticle && !isPrecedent)) {
     return null
@@ -264,7 +218,7 @@ export function LawViewerActionButtons({
               <span className="hidden sm:inline">{showPrecedents ? "판례 닫기" : `판례${precedentTotalCount > 0 ? ` (${precedentTotalCount})` : ""}`}</span>
               <span className="sm:hidden">{showPrecedents ? "닫기" : `판례${precedentTotalCount > 0 ? `(${precedentTotalCount})` : ""}`}</span>
             </Button>
-            {/* 📊 분석 도구 드롭다운 */}
+            {/* 분석 도구 드롭다운 */}
             <LawViewerAnalysisMenu
               meta={meta}
               isOrdinance={isOrdinance}

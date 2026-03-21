@@ -10,15 +10,11 @@ import { VirtualizedArticleList } from "@/components/virtualized-article-list"
 import { ArticleBottomSheet } from "@/components/article-bottom-sheet"
 import { FloatingActionButton } from "@/components/ui/floating-action-button"
 import { AIAnswerSidebar } from "@/components/law-viewer-ai-answer"
-import type { LawArticle, LawMeta } from "@/lib/law-types"
+import { useLawViewerContext } from "./law-viewer-context"
+import type { LawArticle } from "@/lib/law-types"
 import type { ParsedRelatedLaw } from "@/lib/law-parser"
 
 interface LawViewerSidebarProps {
-  // 모드
-  aiAnswerMode: boolean
-  isPrecedent: boolean
-  isOrdinance: boolean
-
   // 상태
   isArticleListCollapsed: boolean
   setIsArticleListCollapsed: (v: boolean) => void
@@ -26,47 +22,36 @@ interface LawViewerSidebarProps {
   setIsArticleListExpanded: (v: boolean) => void
 
   // 데이터
-  meta: LawMeta
   actualArticles: LawArticle[]
   relatedArticles: ParsedRelatedLaw[]
   mergedRelatedArticles: ParsedRelatedLaw[]
   activeJo: string
   loadingJo: string | null
-  favorites: Set<string>
   isStreaming?: boolean
 
   // 콜백
   handleArticleClick: (jo: string) => void
   openExternalLawArticleModal: (lawName: string, article: string) => void
-  onToggleFavorite?: (jo: string) => void
-
-  // 유틸
-  formatSimpleJo: (jo: string, forceOrdinance?: boolean) => string
-  isFavorite: (jo: string) => boolean
 }
 
 export function LawViewerSidebar({
-  aiAnswerMode,
-  isPrecedent,
-  isOrdinance,
   isArticleListCollapsed,
   setIsArticleListCollapsed,
   isArticleListExpanded,
   setIsArticleListExpanded,
-  meta,
   actualArticles,
   relatedArticles,
   mergedRelatedArticles,
   activeJo,
   loadingJo,
-  favorites,
   isStreaming,
   handleArticleClick,
   openExternalLawArticleModal,
-  onToggleFavorite,
-  formatSimpleJo,
-  isFavorite,
 }: LawViewerSidebarProps) {
+  const {
+    aiAnswerMode, isPrecedent, isOrdinance, meta,
+    favorites, onToggleFavorite, formatSimpleJo, isFavorite,
+  } = useLawViewerContext()
   // FAB 카운트: AIAnswerSidebar와 동일한 필터링+중복제거 적용
   const aiRelatedCount = (() => {
     const seen = new Set<string>()

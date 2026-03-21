@@ -455,7 +455,7 @@ export function useAiSearch(deps: HandlerDeps) {
           actions.addToolCallLog({
             id: `log-${++logIdCounter}`,
             type: 'source',
-            displayName: event.source === 'openclaw' ? 'OpenClaw Bridge' : 'Gemini',
+            displayName: event.source === 'claude' ? 'Claude' : event.source === 'openclaw' ? 'Claude (Bridge)' : 'Gemini',
             message: event.source,
             timestamp: Date.now(),
           })

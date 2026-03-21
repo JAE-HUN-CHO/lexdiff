@@ -46,6 +46,7 @@ export const TIER_3 = [
   'parse_article_links', 'parse_jo_code', 'get_english_law_text',
   'search_english_law', 'compare_articles', 'summarize_precedent',
   'extract_precedent_keywords',
+  'get_life_law_categories', 'get_life_law_detail', 'get_life_law_faq', 'search_life_law_content',
 ] as const
 
 // Domain detection for query classification
@@ -162,7 +163,7 @@ export function selectToolsForQuery(query: string): string[] {
   return Array.from(tools).slice(0, 25)
 }
 
-// Display names for ALL 64 tools (57 base + 7 chain)
+// Display names for ALL 69 tools (62 base + 7 chain)
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   search_ai_law: '지능형 법령 검색',
   search_law: '법령 검색',
@@ -221,6 +222,10 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   compare_articles: '조문 비교',
   summarize_precedent: '판례 요약',
   extract_precedent_keywords: '판례 키워드 추출',
+  get_life_law_categories: '생활법령 카테고리',
+  get_life_law_detail: '생활법령 상세',
+  get_life_law_faq: '생활법령 FAQ',
+  search_life_law_content: '생활법령 검색',
   // Chain tools (7)
   chain_law_system: '법체계 파악',
   chain_action_basis: '처분근거 확인',
