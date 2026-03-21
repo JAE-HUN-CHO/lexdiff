@@ -36,7 +36,7 @@ const scenarios = [
   {
     id: 4, name: '징계감경',
     query: '공무원 징계 감경 사유와 기준',
-    expectedCitations: ['국가공무원법'],
+    expectedCitations: ['국가공무원법', '징계령', '공무원 징계령'],
     minAnswerLen: 200,
   },
   {
@@ -102,7 +102,7 @@ async function runScenario(s) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: s.query }),
-      signal: AbortSignal.timeout(180_000),
+      signal: AbortSignal.timeout(300_000),
     })
     if (!res.ok) { r.errors.push(`HTTP ${res.status}`); r.durationMs = Date.now() - start; return r }
     const events = parseSSE(await res.text())

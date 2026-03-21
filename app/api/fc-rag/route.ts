@@ -192,38 +192,58 @@ export async function POST(request: NextRequest) {
 
             if (!success) throw new Error('Bridge returned failure')
           } else {
-            // ── 미니PC: CLI subprocess 직접 ──
-            let claudeHadError = false
+            // ── 미니PC: CLI subprocess 직접 (transient error 시 1회 재시도) ──
+            const isTransient = (msg: string) => /타임아웃|timeout|ECONNRESET|EPIPE|ETIMEDOUT/i.test(msg)
+            let cliSuccess = false
 
-            for await (const event of executeClaudeRAGStream(query, {
-              signal: request.signal,
-              conversationId,
-              preEvidence,
-            })) {
-              if (event.type === "error") {
-                claudeHadError = true
-                traceLogger.addEvent(traceId, 'claude_internal_error', { message: event.message })
-                continue
+            for (let attempt = 0; attempt < 2 && !cliSuccess; attempt++) {
+              if (attempt > 0) {
+                sendAndLog({ type: "status", message: "Claude 타임아웃 — 재시도 중...", progress: 3 })
+                traceLogger.addEvent(traceId, 'claude_retry', { attempt })
               }
-              if (claudeHadError && event.type === "answer") continue
 
-              if (event.type === "answer") {
-                lastAnswerCitations = event.data.citations || []
-                if (!userApiKey) {
-                  const usageStats = await recordAITokens(clientIP, event.data.answer.length)
-                  const warningMessage = getUsageWarningMessage(usageStats)
-                  if (warningMessage) {
-                    const warnings = [...(event.data.warnings || []), warningMessage]
-                    sendAndLog({ ...event, data: { ...event.data, warnings } })
-                    continue
+              let claudeHadError = false
+              let errorMessage = ''
+
+              for await (const event of executeClaudeRAGStream(query, {
+                signal: request.signal,
+                conversationId,
+                preEvidence,
+              })) {
+                if (event.type === "error") {
+                  claudeHadError = true
+                  errorMessage = event.message
+                  traceLogger.addEvent(traceId, 'claude_internal_error', { message: event.message })
+                  continue
+                }
+                if (claudeHadError && event.type === "answer") continue
+
+                if (event.type === "answer") {
+                  lastAnswerCitations = event.data.citations || []
+                  if (!userApiKey) {
+                    const usageStats = await recordAITokens(clientIP, event.data.answer.length)
+                    const warningMessage = getUsageWarningMessage(usageStats)
+                    if (warningMessage) {
+                      const warnings = [...(event.data.warnings || []), warningMessage]
+                      sendAndLog({ ...event, data: { ...event.data, warnings } })
+                      continue
+                    }
                   }
                 }
+
+                sendAndLog(event)
               }
 
-              sendAndLog(event)
+              if (!claudeHadError) {
+                cliSuccess = true
+              } else if (attempt === 0 && isTransient(errorMessage)) {
+                continue // 1회 재시도
+              } else {
+                throw new Error('Claude internal error, falling back to Gemini')
+              }
             }
 
-            if (claudeHadError) throw new Error('Claude internal error, falling back to Gemini')
+            if (!cliSuccess) throw new Error('Claude CLI failed after retries')
           }
 
           // Citation 검증 (양쪽 경로 공통)
