@@ -19,7 +19,7 @@ import { AnnexModal } from "@/components/annex-modal"
 import { LegalMarkdownRenderer } from "@/components/legal-markdown-renderer"
 import { parseOrdinanceXML } from "@/lib/ordin-parser"
 import { extractArticleText } from "@/lib/law-xml-parser"
-import { formatDate as _formatDate } from "@/lib/law-data-utils"
+import { formatDate as _formatDate, escapeHtml } from "@/lib/law-data-utils"
 
 // ── 유틸 ──────────────────────────────────────────────────
 
@@ -163,8 +163,8 @@ export function OrdinanceBenchmarkView({ initialKeyword, onBack, onHomeClick }: 
         setModalHtml('<p class="text-center py-8 text-muted-foreground">조문 데이터가 없습니다.</p>')
       } else {
         const html = articles.map(article => {
-          const titlePart = article.title ? ` (${article.title})` : ''
-          const header = `<div class="font-semibold text-primary mb-1">${article.joNum}${titlePart}</div>`
+          const titlePart = article.title ? ` (${escapeHtml(article.title)})` : ''
+          const header = `<div class="font-semibold text-primary mb-1">${escapeHtml(article.joNum)}${titlePart}</div>`
           const content = extractArticleText(article, true, r.ordinanceName)
           return `<div class="mb-4 pb-4 border-b border-border/30 last:border-0">${header}<div class="text-sm leading-relaxed">${content}</div></div>`
         }).join('')
@@ -238,8 +238,8 @@ export function OrdinanceBenchmarkView({ initialKeyword, onBack, onHomeClick }: 
         setModalHtml('<p class="text-center py-8 text-muted-foreground">조문 데이터가 없습니다.</p>')
       } else {
         const html = parsed.articles.map(a => {
-          const titlePart = a.title ? ` (${a.title})` : ''
-          const header = `<div class="font-semibold text-primary mb-1">${a.joNum}${titlePart}</div>`
+          const titlePart = a.title ? ` (${escapeHtml(a.title)})` : ''
+          const header = `<div class="font-semibold text-primary mb-1">${escapeHtml(a.joNum)}${titlePart}</div>`
           const content = extractArticleText(a, true, cleanedName)
           return `<div class="mb-4 pb-4 border-b border-border/30 last:border-0">${header}<div class="text-sm leading-relaxed">${content}</div></div>`
         }).join('')
@@ -254,7 +254,7 @@ export function OrdinanceBenchmarkView({ initialKeyword, onBack, onHomeClick }: 
 
   // ── AI 비교 분석 ──
   const checkedResults = useMemo(() =>
-    Array.from(checkedItems).map(k => displayResults[parseInt(k)]).filter(Boolean),
+    Array.from(checkedItems).map(k => displayResults.find(r => `${r.orgCode}-${r.ordinanceSeq || r.ordinanceName}` === k)).filter((r): r is BenchmarkOrdinanceResult => !!r),
     [checkedItems, displayResults])
 
   const handleAiAnalysis = useCallback(async () => {
@@ -512,10 +512,10 @@ export function OrdinanceBenchmarkView({ initialKeyword, onBack, onHomeClick }: 
                       </tr>
                     </thead>
                     <tbody>
-                      {displayResults.map((r, i) => {
-                        const key = `${i}`
+                      {displayResults.map((r) => {
+                        const key = `${r.orgCode}-${r.ordinanceSeq || r.ordinanceName}`
                         return (
-                          <tr key={`${r.orgCode}-${r.ordinanceSeq}-${i}`}
+                          <tr key={key}
                             className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                             <td className="px-2 sm:px-3 py-3 text-center">
                               <Checkbox checked={checkedItems.has(key)}

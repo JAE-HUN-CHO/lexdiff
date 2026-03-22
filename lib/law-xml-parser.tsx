@@ -10,18 +10,25 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
-function renderInlineLawText(text: string, currentLawName?: string): string {
-  // CORRECT order: remove img tags → linkify → selective escape → styling
-  let rendered = removeImgTags(text)
-  rendered = linkifyRefsB(rendered, currentLawName)
-  rendered = rendered.replace(/(<a\s[^>]*>|<\/a>)|(<[^>]*>)|([^<]+)/g, (match, linkTag, otherTag, plainText) => {
+/**
+ * Linkify law references, selectively escape HTML (preserving <a> tags), and apply revision styling.
+ * Shared pipeline used by article content, paragraph content, item content, and delegation content.
+ */
+function linkifyAndEscape(raw: string, currentLawName?: string): string {
+  let result = linkifyRefsB(raw, currentLawName)
+  result = result.replace(/(<a\s[^>]*>|<\/a>)|(<[^>]*>)|([^<]+)/g, (match, linkTag, otherTag, text) => {
     if (linkTag) return linkTag
     if (otherTag) return escapeHtml(otherTag)
-    if (plainText) return escapeHtml(plainText)
+    if (text) return escapeHtml(text)
     return match
   })
-  rendered = applyRevisionStyling(rendered)
-  return rendered
+  return applyRevisionStyling(result)
+}
+
+function renderInlineLawText(text: string, currentLawName?: string): string {
+  // CORRECT order: remove img tags → linkify → selective escape → styling
+  const rendered = removeImgTags(text)
+  return linkifyAndEscape(rendered, currentLawName)
 }
 
 /**
@@ -507,24 +514,13 @@ export function extractArticleText(article: LawArticle, isOrdinance = false, cur
       // 0. 항 번호(①②③) 바로 뒤 공백 정규화: 모든 공백/줄바꿈 제거 후 공백 1칸 추가
       rawContent = rawContent.replace(/([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳])[\s\r\n\t\u00A0]*/g, '$1 ')
 
-      // 1. 링크 생성 (escape 전에)
+      // 1-3. 링크 생성 → HTML escape (링크 태그 보존) → 개정 마커 스타일링
       // ⚠️ 이미 링크가 적용된 콘텐츠(판례 전문 등)는 스킵
       if (rawContent.includes('<a ') || rawContent.includes('data-ref=')) {
         content = rawContent
       } else {
-        content = linkifyRefsB(rawContent, currentLawName)
+        content = linkifyAndEscape(rawContent, currentLawName)
       }
-
-      // 2. HTML escape (링크 태그만 보존, <개정> 같은 것은 escape)
-      content = content.replace(/(<a\s[^>]*>|<\/a>)|(<[^>]*>)|([^<]+)/g, (match, linkTag, otherTag, text) => {
-        if (linkTag) return linkTag  // <a> 태그만 보존
-        if (otherTag) return escapeHtml(otherTag)  // <개정> 같은 것은 escape
-        if (text) return escapeHtml(text)  // 일반 텍스트도 escape
-        return match
-      })
-
-      // 3. 개정 마커 스타일링
-      content = applyRevisionStyling(content)
     } else if (article.title && !(article.paragraphs && article.paragraphs.length > 0)) {
       // article.content가 없고 title만 있고, paragraphs도 없는 경우에만 제목 표시
       // (paragraphs가 있으면 모달 헤더에 이미 제목이 표시되므로 본문에는 출력하지 않음)
@@ -589,18 +585,10 @@ export function extractArticleText(article: LawArticle, isOrdinance = false, cur
         const startsWithNumber = paraContent.trim().match(/^([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]|\d+\.)/)
 
         // CORRECT order: linkify → selective escape → styling
-        let styledParaContent = linkifyRefsB(paraContent, currentLawName)
+        let styledParaContent = linkifyAndEscape(paraContent, currentLawName)
 
         // 항 번호 뒤에 생긴 <br> 태그도 제거 후 공백 1칸 추가
         styledParaContent = styledParaContent.replace(/^([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳])(?:<br\s*\/?>|\s)*/gi, '$1 ')
-
-        styledParaContent = styledParaContent.replace(/(<a\s[^>]*>|<\/a>)|(<[^>]*>)|([^<]+)/g, (match, linkTag, otherTag, text) => {
-          if (linkTag) return linkTag  // <a> 태그만 보존
-          if (otherTag) return escapeHtml(otherTag)  // <개정> 같은 것은 escape
-          if (text) return escapeHtml(text)
-          return match
-        })
-        styledParaContent = applyRevisionStyling(styledParaContent)
 
         if (startsWithNumber) {
           // 첫 번째 항은 본문 바로 다음에 이어지고, 이후 항은 줄바꿈 후 표시
@@ -634,14 +622,7 @@ export function extractArticleText(article: LawArticle, isOrdinance = false, cur
             const startsWithNumber = itemContent.trim().match(/^([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]|\d+\.)/)
 
             // CORRECT order: linkify → selective escape → styling
-            let styledItemContent = linkifyRefsB(itemContent, currentLawName)
-            styledItemContent = styledItemContent.replace(/(<a\s[^>]*>|<\/a>)|(<[^>]*>)|([^<]+)/g, (match, linkTag, otherTag, text) => {
-              if (linkTag) return linkTag  // <a> 태그만 보존
-              if (otherTag) return escapeHtml(otherTag)  // <개정> 같은 것은 escape
-              if (text) return escapeHtml(text)
-              return match
-            })
-            styledItemContent = applyRevisionStyling(styledItemContent)
+            const styledItemContent = linkifyAndEscape(itemContent, currentLawName)
 
             if (startsWithNumber) {
               text += "<br>" + styledItemContent
@@ -672,21 +653,9 @@ export function extractArticleText(article: LawArticle, isOrdinance = false, cur
         const startsWithNumber = itemContent.trim().match(/^([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]|\d+\.)/)
 
         // CORRECT order: linkify → selective escape → styling
-        let styledItemContent = linkifyRefsB(itemContent, currentLawName)
-        styledItemContent = styledItemContent.replace(/(<a\s[^>]*>|<\/a>)|(<[^>]*>)|([^<]+)/g, (match, linkTag, otherTag, text) => {
-          if (linkTag) return linkTag  // <a> 태그만 보존
-          if (otherTag) return escapeHtml(otherTag)  // <개정> 같은 것은 escape
-          if (text) return escapeHtml(text)
-          return match
-        })
-        styledItemContent = applyRevisionStyling(styledItemContent)
+        const styledItemContent = linkifyAndEscape(itemContent, currentLawName)
 
-        // 첫 번째 호만 <br> 하나로 연결, 나머지는 <br> 추가
-        if (index === 0) {
-          text += "<br>" + styledItemContent
-        } else {
-          text += "<br>" + styledItemContent
-        }
+        text += "<br>" + styledItemContent
       })
     }
   }
@@ -715,14 +684,7 @@ export function formatDelegationContent(content: string, currentLawName?: string
   }
 
   // CORRECT order: linkify → selective escape → styling
-  let text = linkifyRefsB(content, currentLawName)
-  text = text.replace(/(<a\s[^>]*>|<\/a>)|(<[^>]*>)|([^<]+)/g, (match, linkTag, otherTag, txt) => {
-    if (linkTag) return linkTag  // <a> 태그만 보존
-    if (otherTag) return escapeHtml(otherTag)  // <개정> 같은 것은 escape
-    if (txt) return escapeHtml(txt)
-    return match
-  })
-  text = applyRevisionStyling(text)
+  let text = linkifyAndEscape(content, currentLawName)
 
   // Add line break + spacing for paragraph markers (①②③) - skip first occurrence
   let isFirst = true

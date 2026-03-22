@@ -167,6 +167,7 @@ function resolveConflicts(matches: LinkMatch[]): LinkMatch[] {
         'annex': 65,
         'article': 60,
         'decree': 50,
+        'regulation': 45,
         'rule': 40
       }
 

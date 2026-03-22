@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useRef } from "react"
+import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import dynamic from 'next/dynamic'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +22,131 @@ const AnnexModal = dynamic(
   { ssr: false }
 )
 
+
+const DEFAULT_FONT_SIZE = 15
+
+// ── Module-scope typeConfigs (only uses constants) ──
+const typeConfigs: Record<string, { icon: IconType, label: string, bgColor: string, borderColor: string, textColor: string }> = {
+    definition: { icon: ICON_REGISTRY['circle-help'], label: '개념/정의', bgColor: 'bg-cyan-500/10', borderColor: 'border-cyan-500/30', textColor: 'text-cyan-500' },
+    requirement: { icon: ICON_REGISTRY['clipboard-check'], label: '요건/조건', bgColor: 'bg-orange-500/10', borderColor: 'border-orange-500/30', textColor: 'text-orange-500' },
+    procedure: { icon: ICON_REGISTRY['list-checks'], label: '절차/방법', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30', textColor: 'text-green-500' },
+    comparison: { icon: ICON_REGISTRY['git-compare'], label: '비교', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/30', textColor: 'text-purple-500' },
+    application: { icon: ICON_REGISTRY['scale'], label: '적용 판단', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30', textColor: 'text-blue-500' },
+    consequence: { icon: ICON_REGISTRY['zap'], label: '효과/결과', bgColor: 'bg-rose-500/10', borderColor: 'border-rose-500/30', textColor: 'text-rose-500' },
+    scope: { icon: ICON_REGISTRY['ruler'], label: '범위/금액', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30', textColor: 'text-amber-500' },
+    exemption: { icon: ICON_REGISTRY['shield'], label: '면제/특례', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30', textColor: 'text-emerald-500' }
+}
+
+// ── Extracted ConfidenceBadge component ──
+interface ConfidenceBadgeProps {
+    aiCitations: VerifiedCitation[]
+}
+
+function ConfidenceBadge({ aiCitations }: ConfidenceBadgeProps) {
+    if (!aiCitations || aiCitations.length === 0) return null
+
+    // 중복 제거된 개수 계산
+    const uniqueCitations = new Map()
+    aiCitations.forEach(c => {
+        const key = `${c.lawName}|${c.articleNum}`
+        if (!uniqueCitations.has(key)) {
+            uniqueCitations.set(key, c)
+        }
+    })
+    const totalUnique = uniqueCitations.size
+
+    // verified 필드가 있으면 사용, 없으면 총 개수를 신뢰도로 표시
+    const hasVerifiedField = aiCitations.some(c => c.verified !== undefined)
+    const verifiedCount = hasVerifiedField
+        ? Array.from(uniqueCitations.values()).filter(c => c.verified).length
+        : totalUnique  // verified 필드 없으면 총 개수 표시
+
+    // 실제 비율 기반 신뢰도 계산 (verified 필드 없으면 총 개수 기반)
+    const confidenceRatio = hasVerifiedField
+        ? (totalUnique > 0 ? verifiedCount / totalUnique : 0)
+        : (totalUnique >= 3 ? 1 : totalUnique >= 1 ? 0.5 : 0)
+    const localConfidence = confidenceRatio >= 0.7 ? 'high' : confidenceRatio >= 0.3 ? 'medium' : 'low'
+
+    return (
+        <div
+            className={`
+                relative flex items-center gap-1 px-1.5 py-0.5 rounded cursor-help
+                transition-colors duration-200
+                ${localConfidence === 'high'
+                    ? 'bg-blue-500/10 dark:bg-blue-400/10 border border-blue-500/30 dark:border-blue-400/30'
+                    : localConfidence === 'medium'
+                        ? 'bg-yellow-500/10 dark:bg-yellow-400/10 border border-yellow-500/30 dark:border-yellow-400/30'
+                        : 'bg-red-500/10 dark:bg-red-400/10 border border-red-500/30 dark:border-red-400/30'
+                }
+            `}
+            title={hasVerifiedField
+                ? `AI 참조 조문: ${totalUnique}개\n실제 조문 존재: ${verifiedCount}개`
+                : `AI 참조 조문: ${totalUnique}개`
+            }
+        >
+            <Icon name="shield-check" size={14} className={localConfidence === 'high'
+                ? 'text-blue-400 dark:text-blue-300'
+                : localConfidence === 'medium'
+                    ? 'text-yellow-500 dark:text-yellow-400'
+                    : 'text-red-500 dark:text-red-400'
+            } />
+            <div className={`flex items-baseline gap-0.5 font-bold ${localConfidence === 'high'
+                ? 'text-blue-400 dark:text-blue-300'
+                : localConfidence === 'medium'
+                    ? 'text-yellow-500 dark:text-yellow-400'
+                    : 'text-red-500 dark:text-red-400'
+                }`}>
+                {hasVerifiedField ? (
+                    <>
+                        <span className="text-sm tabular-nums leading-none">{verifiedCount}</span>
+                        <span className="opacity-40 text-[10px] leading-none">/</span>
+                        <span className="text-sm tabular-nums leading-none">{totalUnique}</span>
+                    </>
+                ) : (
+                    <>
+                        <span className="text-sm tabular-nums leading-none">{totalUnique}</span>
+                        <Icon name="loader" size={10} className="animate-spin opacity-50 ml-0.5" />
+                    </>
+                )}
+            </div>
+        </div>
+    )
+}
+
+// ── Extracted FontControls component ──
+interface FontControlsProps {
+    fontSize: number
+    setFontSize: (size: number | ((prev: number) => number)) => void
+    onRefresh?: () => void
+    aiAnswerContent: string
+}
+
+function FontControls({ fontSize, setFontSize, onRefresh, aiAnswerContent }: FontControlsProps) {
+    return (
+        <>
+            {onRefresh && (
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-orange-500 hover:text-orange-600 hover:bg-orange-500/10" onClick={onRefresh} title="캐시 무시 새로고침 (개발용)">
+                    <Icon name="refresh-cw" size={16} />
+                </Button>
+            )}
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setFontSize((prev) => Math.max(12, prev - 2))} title="글자 작게">
+                <Icon name="zoom-out" size={16} />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setFontSize(DEFAULT_FONT_SIZE)} title="기본 크기">
+                <Icon name="rotate-clockwise" size={12} />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setFontSize((prev) => Math.min(20, prev + 2))} title="글자 크게">
+                <Icon name="zoom-in" size={16} />
+            </Button>
+            <span className="text-xs text-muted-foreground mx-1 tabular-nums">{fontSize}px</span>
+            <CopyButton
+                getText={() => aiAnswerContent}
+                message="복사됨"
+                className="h-8 w-8 p-0"
+            />
+        </>
+    )
+}
 
 interface AIAnswerContentProps {
     aiAnswerContent: string  // ✅ Phase 8: 원본 Markdown (HTML 대신)
@@ -161,16 +286,29 @@ export function AIAnswerContent({
             setDisplayedContent('')
 
             // 청크 기반: 16ms(1프레임)마다 20어절씩 → ~60fps, 재렌더 횟수 대폭 감소
-            const words = aiAnswerContent.split(' ')
-            let pos = 0
+            // O(n) substring 방식: 어절 경계를 찾아 substring으로 잘라냄
             const CHUNK = 20
+            // 사전에 어절 경계 인덱스를 구축
+            const boundaries: number[] = [0]
+            let idx = 0
+            while (idx < aiAnswerContent.length) {
+                const spaceIdx = aiAnswerContent.indexOf(' ', idx)
+                if (spaceIdx === -1) {
+                    boundaries.push(aiAnswerContent.length)
+                    break
+                }
+                boundaries.push(spaceIdx + 1)
+                idx = spaceIdx + 1
+            }
+            let wordPos = 0
 
             const tick = () => {
-                pos = Math.min(pos + CHUNK, words.length)
-                setDisplayedContent(words.slice(0, pos).join(' '))
-                if (pos < words.length) {
+                wordPos = Math.min(wordPos + CHUNK, boundaries.length - 1)
+                setDisplayedContent(aiAnswerContent.substring(0, boundaries[wordPos]))
+                if (wordPos < boundaries.length - 1) {
                     rafId = requestAnimationFrame(tick)
                 } else {
+                    setDisplayedContent(aiAnswerContent)
                     setIsTyping(false)
                 }
             }
@@ -179,78 +317,6 @@ export function AIAnswerContent({
             return () => cancelAnimationFrame(rafId)
         }
     }, [isStreaming, aiAnswerContent])
-
-    // 신뢰도 배지 컴포넌트
-    const ConfidenceBadge = () => {
-        if (!aiCitations || aiCitations.length === 0) return null
-
-        // 중복 제거된 개수 계산
-        const uniqueCitations = new Map()
-        aiCitations.forEach(c => {
-            const key = `${c.lawName}|${c.articleNum}`
-            if (!uniqueCitations.has(key)) {
-                uniqueCitations.set(key, c)
-            }
-        })
-        const totalUnique = uniqueCitations.size
-
-        // verified 필드가 있으면 사용, 없으면 총 개수를 신뢰도로 표시
-        const hasVerifiedField = aiCitations.some(c => c.verified !== undefined)
-        const verifiedCount = hasVerifiedField
-            ? Array.from(uniqueCitations.values()).filter(c => c.verified).length
-            : totalUnique  // verified 필드 없으면 총 개수 표시
-
-        // 실제 비율 기반 신뢰도 계산 (verified 필드 없으면 총 개수 기반)
-        const confidenceRatio = hasVerifiedField
-            ? (totalUnique > 0 ? verifiedCount / totalUnique : 0)
-            : (totalUnique >= 3 ? 1 : totalUnique >= 1 ? 0.5 : 0)
-        const localConfidence = confidenceRatio >= 0.7 ? 'high' : confidenceRatio >= 0.3 ? 'medium' : 'low'
-
-        return (
-            <div
-                className={`
-                    relative flex items-center gap-1 px-1.5 py-0.5 rounded cursor-help
-                    transition-colors duration-200
-                    ${localConfidence === 'high'
-                        ? 'bg-blue-500/10 dark:bg-blue-400/10 border border-blue-500/30 dark:border-blue-400/30'
-                        : localConfidence === 'medium'
-                            ? 'bg-yellow-500/10 dark:bg-yellow-400/10 border border-yellow-500/30 dark:border-yellow-400/30'
-                            : 'bg-red-500/10 dark:bg-red-400/10 border border-red-500/30 dark:border-red-400/30'
-                    }
-                `}
-                title={hasVerifiedField
-                    ? `AI 참조 조문: ${totalUnique}개\n실제 조문 존재: ${verifiedCount}개`
-                    : `AI 참조 조문: ${totalUnique}개`
-                }
-            >
-                <Icon name="shield-check" size={14} className={localConfidence === 'high'
-                    ? 'text-blue-400 dark:text-blue-300'
-                    : localConfidence === 'medium'
-                        ? 'text-yellow-500 dark:text-yellow-400'
-                        : 'text-red-500 dark:text-red-400'
-                } />
-                <div className={`flex items-baseline gap-0.5 font-bold ${localConfidence === 'high'
-                    ? 'text-blue-400 dark:text-blue-300'
-                    : localConfidence === 'medium'
-                        ? 'text-yellow-500 dark:text-yellow-400'
-                        : 'text-red-500 dark:text-red-400'
-                    }`}>
-                    {hasVerifiedField ? (
-                        <>
-                            <span className="text-sm tabular-nums leading-none">{verifiedCount}</span>
-                            <span className="opacity-40 text-[10px] leading-none">/</span>
-                            <span className="text-sm tabular-nums leading-none">{totalUnique}</span>
-                        </>
-                    ) : (
-                        <>
-                            <span className="text-sm tabular-nums leading-none">{totalUnique}</span>
-                            <Icon name="loader" size={10} className="animate-spin opacity-50 ml-0.5" />
-                        </>
-                    )}
-                </div>
-            </div>
-        )
-    }
 
     // 검색 완료 후 통계 계산
     const searchStats = useMemo(() => {
@@ -285,7 +351,7 @@ export function AIAnswerContent({
                         Real-time Legal AI
                     </Badge>
                     {/* 신뢰도 배지 - RAG 배지 바로 옆 */}
-                    <ConfidenceBadge />
+                    <ConfidenceBadge aiCitations={aiCitations} />
                     {/* 검색 통계 아이콘 (완료 후 표시, hover 시 상세) */}
                     {searchStats && streamElapsed > 0 && (
                         <div className="relative group flex-shrink-0">
@@ -358,16 +424,6 @@ export function AIAnswerContent({
                             <span className="break-words line-clamp-3">{userQuery}</span>
                             {/* 쿼리 타입 배지 (7가지 법률 질문 유형) */}
                             {(() => {
-                                const typeConfigs: Record<string, { icon: IconType, label: string, bgColor: string, borderColor: string, textColor: string }> = {
-                                    definition: { icon: ICON_REGISTRY['circle-help'], label: '개념/정의', bgColor: 'bg-cyan-500/10', borderColor: 'border-cyan-500/30', textColor: 'text-cyan-500' },
-                                    requirement: { icon: ICON_REGISTRY['clipboard-check'], label: '요건/조건', bgColor: 'bg-orange-500/10', borderColor: 'border-orange-500/30', textColor: 'text-orange-500' },
-                                    procedure: { icon: ICON_REGISTRY['list-checks'], label: '절차/방법', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30', textColor: 'text-green-500' },
-                                    comparison: { icon: ICON_REGISTRY['git-compare'], label: '비교', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/30', textColor: 'text-purple-500' },
-                                    application: { icon: ICON_REGISTRY['scale'], label: '적용 판단', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30', textColor: 'text-blue-500' },
-                                    consequence: { icon: ICON_REGISTRY['zap'], label: '효과/결과', bgColor: 'bg-rose-500/10', borderColor: 'border-rose-500/30', textColor: 'text-rose-500' },
-                                    scope: { icon: ICON_REGISTRY['ruler'], label: '범위/금액', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30', textColor: 'text-amber-500' },
-                                    exemption: { icon: ICON_REGISTRY['shield'], label: '면제/특례', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30', textColor: 'text-emerald-500' }
-                                }
                                 const config = typeConfigs[aiQueryType] || typeConfigs.application
 
                                 return (
@@ -380,54 +436,14 @@ export function AIAnswerContent({
                         </div>
                         {/* PC: 버튼들 우측 정렬 */}
                         <div className="hidden lg:flex items-center gap-1 ml-auto flex-shrink-0">
-                            {/* ✅ 강제 새로고침 버튼 (개발용) */}
-                            {onRefresh && (
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-orange-500 hover:text-orange-600 hover:bg-orange-500/10" onClick={onRefresh} title="캐시 무시 새로고침 (개발용)">
-                                    <Icon name="refresh-cw" size={16} />
-                                </Button>
-                            )}
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setFontSize((prev) => Math.max(12, prev - 2))} title="글자 작게">
-                                <Icon name="zoom-out" size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setFontSize(15)} title="기본 크기">
-                                <Icon name="rotate-clockwise" size={12} />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setFontSize((prev) => Math.min(20, prev + 2))} title="글자 크게">
-                                <Icon name="zoom-in" size={16} />
-                            </Button>
-                            <span className="text-xs text-muted-foreground mx-1 tabular-nums">{fontSize}px</span>
-                            <CopyButton
-                                getText={() => aiAnswerContent}
-                                message="복사됨"
-                                className="h-8 w-8 p-0"
-                            />
+                            <FontControls fontSize={fontSize} setFontSize={setFontSize} onRefresh={onRefresh} aiAnswerContent={aiAnswerContent} />
                         </div>
                     </div>
                 )} { /* userQuery end */}
 
                 {/* 3줄: 모바일 전용 컨트롤 버튼들 (우측 정렬) */}
                 <div className="flex lg:hidden items-center justify-end gap-1">
-                    {/* ✅ 강제 새로고침 버튼 (개발용) */}
-                    {onRefresh && (
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-orange-500 hover:text-orange-600 hover:bg-orange-500/10" onClick={onRefresh} title="캐시 무시 새로고침 (개발용)">
-                            <Icon name="refresh-cw" size={16} />
-                        </Button>
-                    )}
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setFontSize((prev) => Math.max(12, prev - 2))} title="글자 작게">
-                        <Icon name="zoom-out" size={16} />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setFontSize(15)} title="기본 크기">
-                        <Icon name="rotate-clockwise" size={12} />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setFontSize((prev) => Math.min(20, prev + 2))} title="글자 크게">
-                        <Icon name="zoom-in" size={16} />
-                    </Button>
-                    <span className="text-xs text-muted-foreground mx-1 tabular-nums">{fontSize}px</span>
-                    <CopyButton
-                        getText={() => aiAnswerContent}
-                        message="복사됨"
-                        className="h-8 w-8 p-0"
-                    />
+                    <FontControls fontSize={fontSize} setFontSize={setFontSize} onRefresh={onRefresh} aiAnswerContent={aiAnswerContent} />
                 </div>
             </div>
 

@@ -37,60 +37,7 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
   const newScrollRef = useRef<HTMLDivElement>(null)
   const isScrollingRef = useRef(false)
 
-  useEffect(() => {
-    if (isOpen && (lawId || mst)) {
-      setRevisionStack([{ date: undefined, number: undefined }])
-      setCurrentRevisionIndex(0)
-      loadRevisionHistory()
-      loadComparison()
-    }
-  }, [isOpen, lawId, mst])
-
-  // 접근성: 모달 열릴 때 첫 번째 포커스 가능 요소로 포커스 이동
-  useEffect(() => {
-    if (!isOpen) return
-
-    const timer = setTimeout(() => {
-      const dialog = document.querySelector('[role="dialog"]')
-      if (dialog) {
-        const firstFocusable = dialog.querySelector<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
-        firstFocusable?.focus()
-      }
-    }, 150)
-
-    return () => clearTimeout(timer)
-  }, [isOpen])
-
-
-  useEffect(() => {
-    if (comparison && targetJo && oldScrollRef.current && newScrollRef.current) {
-      setTimeout(() => {
-        const targetArticleNum = Number.parseInt(targetJo.substring(0, 4), 10)
-        const targetText = `제${targetArticleNum}조`
-
-        const oldDiv = oldScrollRef.current
-        const newDiv = newScrollRef.current
-
-        if (oldDiv && newDiv) {
-          const oldHtml = oldDiv.innerHTML
-          const index = oldHtml.indexOf(targetText)
-
-          if (index !== -1) {
-            const totalHeight = oldDiv.scrollHeight
-            const scrollRatio = index / oldHtml.length
-            const scrollPosition = scrollRatio * totalHeight
-
-            oldDiv.scrollTo({ top: scrollPosition, behavior: "smooth" })
-            newDiv.scrollTo({ top: scrollPosition, behavior: "smooth" })
-          }
-        }
-      }, 300)
-    }
-  }, [comparison, targetJo])
-
-  const loadRevisionHistory = async () => {
+  const loadRevisionHistory = useCallback(async () => {
     // targetJo가 없으면 조문별 개정이력을 불러올 수 없음
     if (!targetJo) {
       setArticleHistory([])
@@ -111,7 +58,7 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
       const response = await fetch(`/api/article-history?${params.toString()}`)
 
       if (!response.ok) {
-        console.error('[ComparisonModal] 조문별 개정이력 조회 실패:', response.status)
+        debugLogger.error('[ComparisonModal] 조문별 개정이력 조회 실패:', response.status)
         setArticleHistory([])
         return
       }
@@ -122,13 +69,13 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
       setArticleHistory(history)
       debugLogger.success("조문별 개정이력 조회 완료", { count: history.length, history })
     } catch (err) {
-      console.error('[ComparisonModal] 조문별 개정이력 조회 오류:', err)
+      debugLogger.error('[ComparisonModal] 조문별 개정이력 조회 오류:', err)
       debugLogger.error("조문별 개정이력 조회 실패", err)
       setArticleHistory([])
     }
-  }
+  }, [lawId, mst, targetJo, lawTitle])
 
-  const loadComparison = async (revisionDate?: string, revisionNumber?: string, depth = 0) => {
+  const loadComparison = useCallback(async (revisionDate?: string, revisionNumber?: string, depth = 0) => {
     if (depth >= 5) {
       setError("비교 데이터를 찾을 수 없습니다. 적절한 개정 버전이 없습니다.")
       setIsLoading(false)
@@ -198,7 +145,60 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [lawId, mst, lawTitle, targetJo])
+
+  useEffect(() => {
+    if (isOpen && (lawId || mst)) {
+      setRevisionStack([{ date: undefined, number: undefined }])
+      setCurrentRevisionIndex(0)
+      loadRevisionHistory()
+      loadComparison()
+    }
+  }, [isOpen, lawId, mst, loadRevisionHistory, loadComparison])
+
+  // 접근성: 모달 열릴 때 첫 번째 포커스 가능 요소로 포커스 이동
+  useEffect(() => {
+    if (!isOpen) return
+
+    const timer = setTimeout(() => {
+      const dialog = document.querySelector('[role="dialog"]')
+      if (dialog) {
+        const firstFocusable = dialog.querySelector<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        firstFocusable?.focus()
+      }
+    }, 150)
+
+    return () => clearTimeout(timer)
+  }, [isOpen])
+
+
+  useEffect(() => {
+    if (comparison && targetJo && oldScrollRef.current && newScrollRef.current) {
+      setTimeout(() => {
+        const targetArticleNum = Number.parseInt(targetJo.substring(0, 4), 10)
+        const targetText = `제${targetArticleNum}조`
+
+        const oldDiv = oldScrollRef.current
+        const newDiv = newScrollRef.current
+
+        if (oldDiv && newDiv) {
+          const oldHtml = oldDiv.innerHTML
+          const index = oldHtml.indexOf(targetText)
+
+          if (index !== -1) {
+            const totalHeight = oldDiv.scrollHeight
+            const scrollRatio = index / oldHtml.length
+            const scrollPosition = scrollRatio * totalHeight
+
+            oldDiv.scrollTo({ top: scrollPosition, behavior: "smooth" })
+            newDiv.scrollTo({ top: scrollPosition, behavior: "smooth" })
+          }
+        }
+      }, 300)
+    }
+  }, [comparison, targetJo])
 
   const handleScroll = useCallback((source: "old" | "new") => {
     if (!syncScroll || isScrollingRef.current) return

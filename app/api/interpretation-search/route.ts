@@ -56,8 +56,8 @@ function parseInterpretationSearchXML(xml: string): {
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get("query")
-  const display = searchParams.get("display") || "20"
-  const page = searchParams.get("page") || "1"
+  const display = String(Math.min(Math.max(parseInt(searchParams.get("display") || "20") || 20, 1), 100))
+  const page = String(Math.min(Math.max(parseInt(searchParams.get("page") || "1") || 1, 1), 1000))
   const sort = searchParams.get("sort")
 
   if (!query) {

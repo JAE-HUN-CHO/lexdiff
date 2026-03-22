@@ -93,57 +93,52 @@ async function openDB(): Promise<IDBDatabase> {
   })
 }
 
+// Generic IndexedDB helper to eliminate repeated open-transaction-request-close pattern
+async function withStore<T>(
+  storeName: string,
+  mode: IDBTransactionMode,
+  fn: (store: IDBObjectStore) => IDBRequest
+): Promise<T | undefined> {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, mode)
+    const request = fn(tx.objectStore(storeName))
+    request.onsuccess = () => { resolve(request.result as T | undefined) }
+    request.onerror = () => { reject(request.error) }
+    tx.oncomplete = () => { db.close() }
+    tx.onerror = () => { db.close(); reject(tx.error) }
+  })
+}
+
 // 만료된 캐시 정리
 async function cleanExpiredCache(): Promise<void> {
   try {
     const db = await openDB()
     const expiryTime = Date.now() - CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
 
-    // 제1조 캐시 정리
-    const purposeTx = db.transaction(PURPOSE_STORE, "readwrite")
-    const purposeStore = purposeTx.objectStore(PURPOSE_STORE)
-    const purposeIndex = purposeStore.index("timestamp")
-    const purposeRange = IDBKeyRange.upperBound(expiryTime)
-    const purposeRequest = purposeIndex.openCursor(purposeRange)
+    const cleanStore = (storeName: string): Promise<void> =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, "readwrite")
+        const store = tx.objectStore(storeName)
+        const index = store.index("timestamp")
+        const range = IDBKeyRange.upperBound(expiryTime)
+        const request = index.openCursor(range)
 
-    purposeRequest.onsuccess = () => {
-      const cursor = purposeRequest.result
-      if (cursor) {
-        cursor.delete()
-        cursor.continue()
-      }
-    }
+        request.onsuccess = () => {
+          const cursor = request.result
+          if (cursor) {
+            cursor.delete()
+            cursor.continue()
+          }
+        }
 
-    // 매칭 인덱스 정리
-    const matchIndexTx = db.transaction(MATCH_INDEX_STORE, "readwrite")
-    const matchIndexStore = matchIndexTx.objectStore(MATCH_INDEX_STORE)
-    const matchIndexIndex = matchIndexStore.index("timestamp")
-    const matchIndexRange = IDBKeyRange.upperBound(expiryTime)
-    const matchIndexRequest = matchIndexIndex.openCursor(matchIndexRange)
+        tx.oncomplete = () => { resolve() }
+        tx.onerror = () => { reject(tx.error) }
+      })
 
-    matchIndexRequest.onsuccess = () => {
-      const cursor = matchIndexRequest.result
-      if (cursor) {
-        cursor.delete()
-        cursor.continue()
-      }
-    }
-
-    // 내용 캐시 정리
-    const contentTx = db.transaction(CONTENT_STORE, "readwrite")
-    const contentStore = contentTx.objectStore(CONTENT_STORE)
-    const contentIndex = contentStore.index("timestamp")
-    const contentRange = IDBKeyRange.upperBound(expiryTime)
-    const contentRequest = contentIndex.openCursor(contentRange)
-
-    contentRequest.onsuccess = () => {
-      const cursor = contentRequest.result
-      if (cursor) {
-        cursor.delete()
-        cursor.continue()
-      }
-    }
-
+    await cleanStore(PURPOSE_STORE)
+    await cleanStore(MATCH_INDEX_STORE)
+    await cleanStore(CONTENT_STORE)
     db.close()
   } catch (error) {
     debugLogger.warning("[admin-rule-cache] Failed to clean expired cache:", error)
@@ -163,31 +158,10 @@ export async function getLawAdminRulesPurposeCacheOptimistic(
   lawName: string
 ): Promise<{ rules: LawAdminRulesPurposeCache["rules"]; mst: string } | null> {
   try {
-    const db = await openDB()
-    const key = lawName
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(PURPOSE_STORE, "readonly")
-      const store = tx.objectStore(PURPOSE_STORE)
-      const request = store.get(key)
-
-      request.onsuccess = () => {
-        const entry = request.result as LawAdminRulesPurposeCache | undefined
-        db.close()
-
-        if (entry) {
-          // MST 체크 없이 바로 반환 (Optimistic)
-          resolve({ rules: entry.rules, mst: entry.mst })
-        } else {
-          resolve(null)
-        }
-      }
-
-      request.onerror = () => {
-        db.close()
-        reject(request.error)
-      }
-    })
+    const entry = await withStore<LawAdminRulesPurposeCache>(
+      PURPOSE_STORE, "readonly", (store) => store.get(lawName)
+    )
+    return entry ? { rules: entry.rules, mst: entry.mst } : null
   } catch (error: unknown) {
     debugLogger.error("[admin-rule-cache] Error reading optimistic cache:", error)
     return null
@@ -202,36 +176,11 @@ export async function getLawAdminRulesPurposeCache(
   currentMst: string
 ): Promise<LawAdminRulesPurposeCache["rules"] | null> {
   try {
-    const db = await openDB()
-    const key = lawName
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(PURPOSE_STORE, "readonly")
-      const store = tx.objectStore(PURPOSE_STORE)
-      const request = store.get(key)
-
-      request.onsuccess = () => {
-        const entry = request.result as LawAdminRulesPurposeCache | undefined
-        db.close()
-
-        if (entry) {
-          // MST 버전 확인
-          if (entry.mst !== currentMst) {
-            resolve(null)
-            return
-          }
-
-          resolve(entry.rules)
-        } else {
-          resolve(null)
-        }
-      }
-
-      request.onerror = () => {
-        db.close()
-        reject(request.error)
-      }
-    })
+    const entry = await withStore<LawAdminRulesPurposeCache>(
+      PURPOSE_STORE, "readonly", (store) => store.get(lawName)
+    )
+    if (!entry || entry.mst !== currentMst) return null
+    return entry.rules
   } catch (error: unknown) {
     debugLogger.error("[admin-rule-cache] Error reading purpose cache:", error)
 
@@ -255,25 +204,10 @@ export async function getLawAdminRulesPurposeCacheEntry(
   lawName: string
 ): Promise<LawAdminRulesPurposeCache | null> {
   try {
-    const db = await openDB()
-    const key = lawName
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(PURPOSE_STORE, "readonly")
-      const store = tx.objectStore(PURPOSE_STORE)
-      const request = store.get(key)
-
-      request.onsuccess = () => {
-        const entry = request.result as LawAdminRulesPurposeCache | undefined
-        db.close()
-        resolve(entry || null)
-      }
-
-      request.onerror = () => {
-        db.close()
-        reject(request.error)
-      }
-    })
+    const entry = await withStore<LawAdminRulesPurposeCache>(
+      PURPOSE_STORE, "readonly", (store) => store.get(lawName)
+    )
+    return entry || null
   } catch (error) {
     debugLogger.error("[admin-rule-cache] Error reading purpose cache entry:", error)
     return null
@@ -289,32 +223,14 @@ export async function setLawAdminRulesPurposeCache(
   rules: LawAdminRulesPurposeCache["rules"]
 ): Promise<void> {
   try {
-    const db = await openDB()
-    const key = lawName
-
     const entry: LawAdminRulesPurposeCache = {
-      key,
+      key: lawName,
       lawName,
       mst,
       timestamp: Date.now(),
       rules,
     }
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(PURPOSE_STORE, "readwrite")
-      const store = tx.objectStore(PURPOSE_STORE)
-      const request = store.put(entry)
-
-      request.onsuccess = () => {
-        db.close()
-        resolve()
-      }
-
-      request.onerror = () => {
-        db.close()
-        reject(request.error)
-      }
-    })
+    await withStore(PURPOSE_STORE, "readwrite", (store) => store.put(entry))
   } catch (error) {
     debugLogger.error("[admin-rule-cache] Error saving purpose cache:", error)
   }
@@ -333,36 +249,12 @@ export async function getArticleMatchIndex(
   currentMst: string
 ): Promise<string[] | null> {
   try {
-    const db = await openDB()
     const key = `${lawName}_${articleNumber}`
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(MATCH_INDEX_STORE, "readonly")
-      const store = tx.objectStore(MATCH_INDEX_STORE)
-      const request = store.get(key)
-
-      request.onsuccess = () => {
-        const entry = request.result as ArticleMatchIndex | undefined
-        db.close()
-
-        if (entry) {
-          // MST 버전 확인
-          if (entry.mst !== currentMst) {
-            resolve(null)
-            return
-          }
-
-          resolve(entry.matchedRuleIds)
-        } else {
-          resolve(null)
-        }
-      }
-
-      request.onerror = () => {
-        db.close()
-        reject(request.error)
-      }
-    })
+    const entry = await withStore<ArticleMatchIndex>(
+      MATCH_INDEX_STORE, "readonly", (store) => store.get(key)
+    )
+    if (!entry || entry.mst !== currentMst) return null
+    return entry.matchedRuleIds
   } catch (error: unknown) {
     debugLogger.error("[admin-rule-cache] Error reading match index:", error)
 
@@ -388,33 +280,15 @@ export async function setArticleMatchIndex(
   matchedRuleIds: string[]
 ): Promise<void> {
   try {
-    const db = await openDB()
-    const key = `${lawName}_${articleNumber}`
-
     const entry: ArticleMatchIndex = {
-      key,
+      key: `${lawName}_${articleNumber}`,
       lawName,
       articleNumber,
       mst,
       timestamp: Date.now(),
       matchedRuleIds,
     }
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(MATCH_INDEX_STORE, "readwrite")
-      const store = tx.objectStore(MATCH_INDEX_STORE)
-      const request = store.put(entry)
-
-      request.onsuccess = () => {
-        db.close()
-        resolve()
-      }
-
-      request.onerror = () => {
-        db.close()
-        reject(request.error)
-      }
-    })
+    await withStore(MATCH_INDEX_STORE, "readwrite", (store) => store.put(entry))
   } catch (error) {
     debugLogger.warning('[admin-rule-cache] cache operation failed:', error)
   }
@@ -431,30 +305,10 @@ export async function getAdminRuleContentCache(
   ruleId: string
 ): Promise<{ title: string; html: string } | null> {
   try {
-    const db = await openDB()
-    const key = ruleId
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(CONTENT_STORE, "readonly")
-      const store = tx.objectStore(CONTENT_STORE)
-      const request = store.get(key)
-
-      request.onsuccess = () => {
-        const entry = request.result as ContentCacheEntry | undefined
-        db.close()
-
-        if (entry) {
-          resolve({ title: entry.title, html: entry.html })
-        } else {
-          resolve(null)
-        }
-      }
-
-      request.onerror = () => {
-        db.close()
-        reject(request.error)
-      }
-    })
+    const entry = await withStore<ContentCacheEntry>(
+      CONTENT_STORE, "readonly", (store) => store.get(ruleId)
+    )
+    return entry ? { title: entry.title, html: entry.html } : null
   } catch (error: unknown) {
     debugLogger.error("[admin-rule-cache] Error reading content cache:", error)
 
@@ -480,32 +334,14 @@ export async function setAdminRuleContentCache(
   effectiveDate?: string
 ): Promise<void> {
   try {
-    const db = await openDB()
-    const key = ruleId
-
     const entry: ContentCacheEntry = {
-      key,
+      key: ruleId,
       timestamp: Date.now(),
       title,
       html,
       effectiveDate,
     }
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(CONTENT_STORE, "readwrite")
-      const store = tx.objectStore(CONTENT_STORE)
-      const request = store.put(entry)
-
-      request.onsuccess = () => {
-        db.close()
-        resolve()
-      }
-
-      request.onerror = () => {
-        db.close()
-        reject(request.error)
-      }
-    })
+    await withStore(CONTENT_STORE, "readwrite", (store) => store.put(entry))
   } catch (error) {
     debugLogger.warning('[admin-rule-cache] cache operation failed:', error)
   }
@@ -516,24 +352,7 @@ export async function setAdminRuleContentCache(
  */
 export async function clearAdminRuleContentCache(ruleId: string): Promise<void> {
   try {
-    const db = await openDB()
-    const key = ruleId
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(CONTENT_STORE, "readwrite")
-      const store = tx.objectStore(CONTENT_STORE)
-      const request = store.delete(key)
-
-      request.onsuccess = () => {
-        db.close()
-        resolve()
-      }
-
-      request.onerror = () => {
-        db.close()
-        reject(request.error)
-      }
-    })
+    await withStore(CONTENT_STORE, "readwrite", (store) => store.delete(ruleId))
   } catch (error) {
     debugLogger.warning('[admin-rule-cache] cache operation failed:', error)
   }
@@ -544,18 +363,9 @@ export async function clearAdminRuleContentCache(ruleId: string): Promise<void> 
  */
 export async function clearAllAdminRuleCache(): Promise<void> {
   try {
-    const db = await openDB()
-
-    const purposeTx = db.transaction(PURPOSE_STORE, "readwrite")
-    purposeTx.objectStore(PURPOSE_STORE).clear()
-
-    const matchIndexTx = db.transaction(MATCH_INDEX_STORE, "readwrite")
-    matchIndexTx.objectStore(MATCH_INDEX_STORE).clear()
-
-    const contentTx = db.transaction(CONTENT_STORE, "readwrite")
-    contentTx.objectStore(CONTENT_STORE).clear()
-
-    db.close()
+    await withStore(PURPOSE_STORE, "readwrite", (store) => store.clear())
+    await withStore(MATCH_INDEX_STORE, "readwrite", (store) => store.clear())
+    await withStore(CONTENT_STORE, "readwrite", (store) => store.clear())
   } catch (error) {
     debugLogger.warning('[admin-rule-cache] cache operation failed:', error)
   }

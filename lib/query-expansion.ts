@@ -26,6 +26,10 @@ import {
   STANDALONE_REGION_PATTERN,
 } from './query-expansion-data'
 
+// 법률 불용어 regex 소스 (g-flag는 stateful이므로 매번 새 인스턴스 생성)
+const LEGAL_STOPWORD_SOURCE = '\\s*(에\\s*관한|에\\s*대한|에\\s*관하여|관련|조례|조레|자치법규|규칙|법률|시행령|시행규칙|규정)\\s*'
+function createLegalStopRegex() { return new RegExp(LEGAL_STOPWORD_SOURCE, 'g') }
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 하위 호환 re-export — 기존 import 경로를 유지
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -104,8 +108,7 @@ const NATURAL_LANG_STOPWORDS = new Set([
  * 4. 사전에 있는 용어 우선, 없으면 어근 시도
  */
 function extractKeywords(text: string): string[] {
-  const legalStop = /\s*(에\s*관한|에\s*대한|에\s*관하여|관련|조례|조레|자치법규|규칙|법률|시행령|시행규칙|규정)\s*/g
-  const cleaned = text.replace(legalStop, ' ').replace(/\s+/g, ' ').trim()
+  const cleaned = text.replace(createLegalStopRegex(), ' ').replace(/\s+/g, ' ').trim()
   const words = cleaned.split(/\s+/).filter(w => w.length >= 2)
 
   const keywords: string[] = []
@@ -163,8 +166,7 @@ export function parseQueryRegionAndKeywords(query: string): {
   cleaned: string
 } {
   // 법률 불용어 제거
-  const legalStop = /\s*(에\s*관한|에\s*대한|에\s*관하여|관련|조례|조레|자치법규|규칙|법률|시행령|시행규칙|규정)\s*/g
-  const cleaned = query.replace(legalStop, ' ').replace(/\s+/g, ' ').trim()
+  const cleaned = query.replace(createLegalStopRegex(), ' ').replace(/\s+/g, ' ').trim()
 
   // 지역명 추출
   const regionMatch = cleaned.match(REGION_PATTERN)
@@ -313,7 +315,7 @@ export function expandKeyword(keyword: string): QueryExpansionResult {
  * @param query 전체 검색 쿼리
  * @param excludeRegion true이면 지역명은 확장하지 않음
  */
-export function expandQuery(query: string, _excludeRegion = true): {
+export function expandQuery(query: string): {
   /** 모든 확장 키워드 (중복 제거) */
   allExpanded: string[]
   /** 키워드별 확장 결과 */
@@ -348,7 +350,7 @@ export function expandQuery(query: string, _excludeRegion = true): {
  * // → ["세금 감면", "조세 감면", "세액공제", "비과세"]
  */
 export function expandForLawSearch(query: string): string[] {
-  const expansion = expandQuery(query, true)
+  const expansion = expandQuery(query)
   // 법령 검색은 보수적으로 — 동의어만 (하위어 제외)
   return expansion.allExpanded.filter(e => {
     const details = expansion.details.find(d => d.expanded.includes(e))

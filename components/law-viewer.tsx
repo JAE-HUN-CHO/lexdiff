@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useMemo, memo } from "react"
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react"
 import dynamic from "next/dynamic"
 import { Card } from "@/components/ui/card"
-import type { LawArticle, LawMeta } from "@/lib/law-types"
+import type { LawArticle, LawMeta, RevisionHistoryItem } from "@/lib/law-types"
 import { extractArticleText } from "@/lib/law-xml-parser"
 import { buildJO, formatJO, type ParsedRelatedLaw } from "@/lib/law-parser"
 
@@ -34,6 +34,11 @@ import { debugLogger } from '@/lib/debug-logger'
 import type { VerifiedCitation } from '@/lib/citation-verifier'
 import { LawViewerActionButtons, LawViewerRelatedCases, LawViewerOrdinanceActions, LawViewerSidebar, LawViewerHeader, LawViewerMainContent, LawViewerProvider, type LawViewerContextValue } from "@/components/law-viewer/index"
 import { ImpactAnalysisPanel } from "@/components/law-viewer/impact-analysis-panel"
+
+// ── Module-level constants (prevent new object allocation every render) ──
+const DEFAULT_META = { lawTitle: '', fetchedAt: '' } as const
+const EMPTY_SET = new Set<string>()
+const EMPTY_ARRAY: never[] = []
 
 // ── Props 그루핑 ──
 
@@ -85,21 +90,21 @@ interface LawViewerAnalysisProps {
 type LawViewerProps = LawViewerCoreProps & LawViewerAIProps & LawViewerAnalysisProps
 
 function LawViewerComponent({
-  meta = { lawTitle: '', fetchedAt: new Date().toISOString() },
-  articles = [],
+  meta = DEFAULT_META,
+  articles = EMPTY_ARRAY,
   selectedJo,
   onCompare,
   onSummarize,
   onToggleFavorite,
-  favorites = new Set(),
+  favorites = EMPTY_SET,
   isOrdinance = false,
   viewMode = "single",
   aiAnswerMode = false,
   aiAnswerContent,
-  relatedArticles = [],
+  relatedArticles = EMPTY_ARRAY,
   onRelatedArticleClick,
   fileSearchFailed = false,
-  aiCitations = [],
+  aiCitations = EMPTY_ARRAY,
   userQuery = '',
   aiConfidenceLevel = 'high',
   aiQueryType = 'application',
@@ -107,8 +112,8 @@ function LawViewerComponent({
   onAiRefresh,
   isStreaming = false,
   searchProgress = 0,
-  toolCallLogs = [],
-  conversationHistory = [],
+  toolCallLogs = EMPTY_ARRAY,
+  conversationHistory = EMPTY_ARRAY,
   onFollowUp,
   onNewConversation,
   isPrecedent = false,
@@ -138,7 +143,7 @@ function LawViewerComponent({
   const [isArticleListCollapsed, setIsArticleListCollapsed] = useState(false) // 조문목록 접기 상태
   const articleRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const contentRef = useRef<HTMLDivElement>(null)
-  const [revisionHistory, setRevisionHistory] = useState<any[]>([])
+  const [revisionHistory, setRevisionHistory] = useState<RevisionHistoryItem[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [showImpactAnalysis, setShowImpactAnalysis] = useState(false)
 
@@ -258,12 +263,12 @@ function LawViewerComponent({
     articleRefs.current = {}
   }, [articles])
 
-  const activeArticle = loadedArticles.find((a) => a.jo === activeJo)
+  const activeArticle = useMemo(() => loadedArticles.find((a) => a.jo === activeJo), [loadedArticles, activeJo])
 
   // ✅ 즐겨찾기 키 정규화 (backward compatible)
-  const favoriteKey = (jo: string) => `${meta.lawTitle}-${jo}`
-  const isFavorite = (jo: string) => favorites.has(favoriteKey(jo)) || favorites.has(jo)
-  const favoriteCount = actualArticles.reduce((acc, a) => acc + (isFavorite(a.jo) ? 1 : 0), 0)
+  const favoriteKey = useCallback((jo: string) => `${meta.lawTitle}-${jo}`, [meta.lawTitle])
+  const isFavorite = useCallback((jo: string) => favorites.has(favoriteKey(jo)) || favorites.has(jo), [meta.lawTitle, favorites])
+  const favoriteCount = useMemo(() => actualArticles.reduce((acc, a) => acc + (isFavorite(a.jo) ? 1 : 0), 0), [actualArticles, favorites, meta.lawTitle])
 
   // ✅ useMemo로 HTML 생성 결과 캐싱 (중복 호출 방지)
   const activeArticleHtml = useMemo(() => {
@@ -385,6 +390,7 @@ function LawViewerComponent({
 
       setRevisionHistory(history)
     } catch (error) {
+      debugLogger.warning('[LawViewer] article fetch failed', error)
       setRevisionHistory([])
     } finally {
       setIsLoadingHistory(false)
@@ -494,6 +500,7 @@ function LawViewerComponent({
           })
         }
       } catch (error) {
+        debugLogger.warning('[LawViewer] article fetch failed', error)
       } finally {
         setLoadingJo(null)
       }
@@ -575,9 +582,9 @@ function LawViewerComponent({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [activeJo, actualArticles, refModal.open])
 
-  const increaseFontSize = () => setFontSize((prev) => Math.min(prev + 2, 28))
-  const decreaseFontSize = () => setFontSize((prev) => Math.max(prev - 2, 10))
-  const resetFontSize = () => setFontSize(15)
+  const increaseFontSize = useCallback(() => setFontSize((prev) => Math.min(prev + 2, 28)), [])
+  const decreaseFontSize = useCallback(() => setFontSize((prev) => Math.max(prev - 2, 10)), [])
+  const resetFontSize = useCallback(() => setFontSize(15), [])
 
   const handleCopy = async () => {
     if (!contentRef.current) return
@@ -590,7 +597,7 @@ function LawViewerComponent({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const openLawCenter = () => {
+  const openLawCenter = useCallback(() => {
     const lawTitle = meta.lawTitle
 
     // 판례 모드: 사건번호로 검색 링크 생성
@@ -615,56 +622,54 @@ function LawViewerComponent({
       const url = `https://www.law.go.kr/법령/${encodeURIComponent(lawTitle)}/${articleNum}`
       window.open(url, "_blank", "noopener,noreferrer")
     }
-  }
+  }, [meta.lawTitle, meta.caseNumber, isPrecedent, isOrdinance, isFullView, activeArticle])
 
-  const formatSimpleJo = useMemo(() => {
-    return (jo: string, forceOrdinance = false): string => {
-      // Already formatted (e.g., "제1조", "제10조의2")
-      if (jo.startsWith("제") && jo.includes("조")) {
-        return jo
-      }
+  const formatSimpleJo = useCallback((jo: string, forceOrdinance = false): string => {
+    // Already formatted (e.g., "제1조", "제10조의2")
+    if (jo.startsWith("제") && jo.includes("조")) {
+      return jo
+    }
 
-      // 6자리 숫자 코드 처리
-      if (jo.length === 6 && /^\d{6}$/.test(jo)) {
-        // 조례 여부 판단: isOrdinance 또는 forceOrdinance가 true
-        const shouldUseOrdinanceFormat = isOrdinance || forceOrdinance
+    // 6자리 숫자 코드 처리
+    if (jo.length === 6 && /^\d{6}$/.test(jo)) {
+      // 조례 여부 판단: isOrdinance 또는 forceOrdinance가 true
+      const shouldUseOrdinanceFormat = isOrdinance || forceOrdinance
 
-        if (shouldUseOrdinanceFormat) {
-          // Ordinance format: AABBCC (AA = article, BB = branch, CC = sub)
-          // Example: "010000" = 제1조, "010100" = 제1조의1
-          const articleNum = Number.parseInt(jo.substring(0, 2), 10)
-          const branchNum = Number.parseInt(jo.substring(2, 4), 10)
-          const subNum = Number.parseInt(jo.substring(4, 6), 10)
-
-          let result = `제${articleNum}조`
-          if (branchNum > 0) result += `의${branchNum}`
-          if (subNum > 0) result += `-${subNum}`
-
-          return result
-        } else {
-          // Law format: AAAABB (AAAA = article, BB = branch)
-          const articleNum = Number.parseInt(jo.substring(0, 4), 10)
-          const branchNum = Number.parseInt(jo.substring(4, 6), 10)
-          return branchNum === 0 ? `제${articleNum}조` : `제${articleNum}조의${branchNum}`
-        }
-      }
-
-      // 8-digit code format (fallback)
-      if (jo.length === 8 && /^\d{8}$/.test(jo)) {
-        const articleNum = Number.parseInt(jo.substring(0, 4), 10)
-        const branchNum = Number.parseInt(jo.substring(4, 6), 10)
-        const subNum = Number.parseInt(jo.substring(6, 8), 10)
+      if (shouldUseOrdinanceFormat) {
+        // Ordinance format: AABBCC (AA = article, BB = branch, CC = sub)
+        // Example: "010000" = 제1조, "010100" = 제1조의1
+        const articleNum = Number.parseInt(jo.substring(0, 2), 10)
+        const branchNum = Number.parseInt(jo.substring(2, 4), 10)
+        const subNum = Number.parseInt(jo.substring(4, 6), 10)
 
         let result = `제${articleNum}조`
         if (branchNum > 0) result += `의${branchNum}`
         if (subNum > 0) result += `-${subNum}`
 
         return result
+      } else {
+        // Law format: AAAABB (AAAA = article, BB = branch)
+        const articleNum = Number.parseInt(jo.substring(0, 4), 10)
+        const branchNum = Number.parseInt(jo.substring(4, 6), 10)
+        return branchNum === 0 ? `제${articleNum}조` : `제${articleNum}조의${branchNum}`
       }
-
-      // Fallback: return as-is
-      return jo
     }
+
+    // 8-digit code format (fallback)
+    if (jo.length === 8 && /^\d{8}$/.test(jo)) {
+      const articleNum = Number.parseInt(jo.substring(0, 4), 10)
+      const branchNum = Number.parseInt(jo.substring(4, 6), 10)
+      const subNum = Number.parseInt(jo.substring(6, 8), 10)
+
+      let result = `제${articleNum}조`
+      if (branchNum > 0) result += `의${branchNum}`
+      if (subNum > 0) result += `-${subNum}`
+
+      return result
+    }
+
+    // Fallback: return as-is
+    return jo
   }, [isOrdinance])
 
   // Content Click Handlers - 링크 클릭 이벤트 처리 (분리된 훅 사용)
@@ -714,7 +719,7 @@ function LawViewerComponent({
   const { handleContentClick } = useContentClickHandlers(contentClickContext, contentClickActions)
 
   // AI 추천 질의 — 법령 액션 핸들러 (시행령/별표/판례 등)
-  const handleLawAction = useMemo(() => (action: string) => {
+  const handleLawAction = useCallback((action: string) => {
     switch (action) {
       case 'three_tier':
         if (tierViewMode === '1-tier') {
@@ -761,7 +766,9 @@ function LawViewerComponent({
     formatSimpleJo,
   }), [
     meta, isPrecedent, isOrdinance, aiAnswerMode, viewMode,
-    fontSize, favorites, onToggleFavorite, onCompare, onSummarize, onRefresh,
+    fontSize, increaseFontSize, decreaseFontSize, resetFontSize,
+    favorites, isFavorite, favoriteKey,
+    onToggleFavorite, onCompare, onSummarize, onRefresh,
     onDelegationGap, onTimeMachine, onOrdinanceSync, onOrdinanceBenchmark,
     openLawCenter, formatSimpleJo,
   ])

@@ -35,7 +35,13 @@ export async function POST(request: Request) {
     const baseUrl = getBaseUrl(request)
     const fullPdfUrl = pdfUrl.startsWith("/") ? `${baseUrl}${pdfUrl}` : pdfUrl
 
-    if (!fullPdfUrl.startsWith(baseUrl) && !validateExternalUrl(fullPdfUrl)) {
+    // 상대 경로도 반드시 허용된 내부 경로인지 검증 (SSRF 방지)
+    if (pdfUrl.startsWith("/")) {
+      const allowedPrefixes = ["/api/annex-pdf"]
+      if (!allowedPrefixes.some((p: string) => pdfUrl.startsWith(p))) {
+        return NextResponse.json({ error: "허용되지 않은 내부 경로입니다." }, { status: 400 })
+      }
+    } else if (!validateExternalUrl(fullPdfUrl)) {
       return NextResponse.json({ error: "허용되지 않은 URL입니다." }, { status: 400 })
     }
 

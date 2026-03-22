@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     if (!apiKey) {
       debugLogger.error("GEMINI_API_KEY is missing")
       return NextResponse.json(
-        { error: "AI 서비스가 설정되지 않았습니다. GEMINI_API_KEY를 확인해 주세요." },
+        { error: "AI 서비스를 사용할 수 없습니다." },
         { status: 500 }
       )
     }

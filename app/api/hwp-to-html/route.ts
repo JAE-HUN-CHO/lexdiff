@@ -29,7 +29,13 @@ export async function POST(request: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const fullUrl = hwpUrl.startsWith("/") ? `${baseUrl}${hwpUrl}` : hwpUrl
 
-    if (!fullUrl.startsWith(baseUrl) && !validateExternalUrl(fullUrl)) {
+    // 상대 경로도 반드시 허용된 내부 경로인지 검증 (SSRF 방지)
+    if (hwpUrl.startsWith("/")) {
+      const allowedPrefixes = ["/api/annex-pdf"]
+      if (!allowedPrefixes.some(p => hwpUrl.startsWith(p))) {
+        return NextResponse.json({ error: "허용되지 않은 내부 경로입니다.", success: false }, { status: 400 })
+      }
+    } else if (!validateExternalUrl(fullUrl)) {
       return NextResponse.json({ error: "허용되지 않은 URL입니다.", success: false }, { status: 400 })
     }
 

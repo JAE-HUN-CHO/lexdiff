@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
+import { safeErrorResponse } from "@/lib/api-error"
 
 const LAW_SERVICE_BASE = "https://www.law.go.kr/DRF/lawService.do"
 const LAW_SEARCH_BASE = "https://www.law.go.kr/DRF/lawSearch.do"
@@ -263,9 +264,6 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     debugLogger.error("구법령 조회 실패", { lawName, efYd, error: String(error) })
-    return NextResponse.json(
-      { error: "구법령 조회에 실패했습니다", detail: String(error) },
-      { status: 500 }
-    )
+    return safeErrorResponse(error, "구법령 조회에 실패했습니다")
   }
 }

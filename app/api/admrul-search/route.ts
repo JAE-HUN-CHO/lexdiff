@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get("query") || ""
     const search = searchParams.get("search") || "1"
     const knd = searchParams.get("knd") || ""
-    const display = searchParams.get("display") || "20"
-    const page = searchParams.get("page") || "1"
+    const display = String(Math.min(Math.max(parseInt(searchParams.get("display") || "20") || 20, 1), 100))
+    const page = String(Math.min(Math.max(parseInt(searchParams.get("page") || "1") || 1, 1), 1000))
     const nw = searchParams.get("nw") || "1" // 1=현행, 2=연혁
 
     // Build API URL

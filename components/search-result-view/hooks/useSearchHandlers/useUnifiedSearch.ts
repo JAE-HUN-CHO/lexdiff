@@ -37,6 +37,34 @@ interface RulingSearchResponse {
   rulings: RulingSearchResult[]
 }
 
+async function fetchPrecedents(params: URLSearchParams): Promise<PrecedentSearchResponse> {
+  const response = await fetch(`/api/precedent-search?${params.toString()}`)
+  if (!response.ok) throw new Error(`판례 검색 실패: ${response.status}`)
+  return response.json()
+}
+
+interface PrecedentResultActions {
+  setPrecedentResults: (results: PrecedentSearchResult[] | null) => void
+  setPrecedentTotalCount: (count: number) => void
+  setPrecedentYearFilter: (filter: string | undefined) => void
+  setPrecedentCourtFilter: (filter: string | undefined) => void
+}
+
+function applyPrecedentResults(actions: PrecedentResultActions, data: PrecedentSearchResponse): void {
+  actions.setPrecedentResults(data.precedents ?? [])
+  actions.setPrecedentTotalCount(data.totalCount ?? data.precedents?.length ?? 0)
+  actions.setPrecedentYearFilter(data.yearFilter)
+  actions.setPrecedentCourtFilter(data.courtFilter)
+}
+
+async function fetchOrdinances(lawName: string, display: number, page: number) {
+  const apiUrl = `/api/ordin-search?query=${encodeURIComponent(lawName)}&display=${display}&page=${page}`
+  const response = await fetch(apiUrl)
+  if (!response.ok) throw new Error("조례 검색 실패")
+  const xmlText = await response.text()
+  return parseOrdinanceSearchXML(xmlText)
+}
+
 function cleanPrecedentHtml(text: string): string {
   if (!text) return ""
 
@@ -168,18 +196,10 @@ export function useUnifiedSearch(deps: UseUnifiedSearchDeps) {
         if (court) params.append("court", court)
         if (caseNumber) params.append("caseNumber", caseNumber)
 
-        const response = await fetch(`/api/precedent-search?${params.toString()}`)
-        if (!response.ok) {
-          throw new Error(`판례 검색 실패: ${response.status}`)
-        }
+        const data = await fetchPrecedents(params)
 
-        const data = (await response.json()) as PrecedentSearchResponse
-
-        actions.setPrecedentResults(data.precedents ?? [])
-        actions.setPrecedentTotalCount(data.totalCount ?? data.precedents?.length ?? 0)
+        applyPrecedentResults(actions, data)
         actions.setPrecedentPage(1)
-        actions.setPrecedentYearFilter(data.yearFilter)
-        actions.setPrecedentCourtFilter(data.courtFilter)
 
         if ((data.precedents?.length ?? 0) === 0) {
           toast({
@@ -558,16 +578,8 @@ export function useUnifiedSearch(deps: UseUnifiedSearchDeps) {
           display: String(state.precedentPageSize),
         })
 
-        const response = await fetch(`/api/precedent-search?${params.toString()}`)
-        if (!response.ok) {
-          throw new Error(`판례 검색 실패: ${response.status}`)
-        }
-
-        const data = (await response.json()) as PrecedentSearchResponse
-        actions.setPrecedentResults(data.precedents ?? [])
-        actions.setPrecedentTotalCount(data.totalCount ?? 0)
-        actions.setPrecedentYearFilter(data.yearFilter)
-        actions.setPrecedentCourtFilter(data.courtFilter)
+        const data = await fetchPrecedents(params)
+        applyPrecedentResults(actions, data)
       } catch (error) {
         debugLogger.error("[unified-search] precedent page failed", error)
         toast({
@@ -595,16 +607,8 @@ export function useUnifiedSearch(deps: UseUnifiedSearchDeps) {
           display: size.toString(),
         })
 
-        const response = await fetch(`/api/precedent-search?${params.toString()}`)
-        if (!response.ok) {
-          throw new Error(`판례 검색 실패: ${response.status}`)
-        }
-
-        const data = (await response.json()) as PrecedentSearchResponse
-        actions.setPrecedentResults(data.precedents ?? [])
-        actions.setPrecedentTotalCount(data.totalCount ?? 0)
-        actions.setPrecedentYearFilter(data.yearFilter)
-        actions.setPrecedentCourtFilter(data.courtFilter)
+        const data = await fetchPrecedents(params)
+        applyPrecedentResults(actions, data)
       } catch (error) {
         debugLogger.error("[unified-search] precedent page size failed", error)
         toast({
@@ -628,15 +632,7 @@ export function useUnifiedSearch(deps: UseUnifiedSearchDeps) {
         actions.setOrdinancePage(newPage)
 
         const { lawName } = state.ordinanceSelectionState.query
-        const apiUrl = `/api/ordin-search?query=${encodeURIComponent(lawName)}&display=${state.ordinancePageSize}&page=${newPage}`
-
-        const response = await fetch(apiUrl)
-        if (!response.ok) {
-          throw new Error("조례 검색 실패")
-        }
-
-        const xmlText = await response.text()
-        const { totalCount, ordinances } = parseOrdinanceSearchXML(xmlText)
+        const { totalCount, ordinances } = await fetchOrdinances(lawName, state.ordinancePageSize, newPage)
 
         actions.setOrdinanceSelectionState({
           results: ordinances,
@@ -667,15 +663,7 @@ export function useUnifiedSearch(deps: UseUnifiedSearchDeps) {
         actions.setOrdinancePage(1)
 
         const { lawName } = state.ordinanceSelectionState.query
-        const apiUrl = `/api/ordin-search?query=${encodeURIComponent(lawName)}&display=${newSize}&page=1`
-
-        const response = await fetch(apiUrl)
-        if (!response.ok) {
-          throw new Error("조례 검색 실패")
-        }
-
-        const xmlText = await response.text()
-        const { totalCount, ordinances } = parseOrdinanceSearchXML(xmlText)
+        const { totalCount, ordinances } = await fetchOrdinances(lawName, newSize, 1)
 
         actions.setOrdinanceSelectionState({
           results: ordinances,

@@ -120,7 +120,7 @@ export function collectPrecedentMatches(text: string, matches: LinkMatch[]): voi
         type: 'precedent',
         caseNumber,
         displayText: fullText,
-        html: `<a href="#" class="law-ref precedent-ref" data-ref="precedent" data-case-number="${escapeHtml(caseNumber)}" data-court="${escapeHtml(court)}" data-date="${escapeHtml(`${year}.${month}.${day}`)}" aria-label="${escapeHtml(getAriaLabel('precedent', undefined, undefined, undefined, caseNumber))}">${fullText}</a>`
+        html: `<a href="#" class="law-ref precedent-ref" data-ref="precedent" data-case-number="${escapeHtml(caseNumber)}" data-court="${escapeHtml(court)}" data-date="${escapeHtml(`${year}.${month}.${day}`)}" aria-label="${escapeHtml(getAriaLabel('precedent', undefined, undefined, undefined, caseNumber))}">${escapeHtml(fullText)}</a>`
       })
     }
   }
@@ -152,7 +152,7 @@ export function collectPrecedentMatches(text: string, matches: LinkMatch[]): voi
         type: 'precedent',
         caseNumber,
         displayText: fullText,
-        html: `<a href="#" class="law-ref precedent-ref" data-ref="precedent" data-case-number="${escapeHtml(caseNumber)}" aria-label="${escapeHtml(getAriaLabel('precedent', undefined, undefined, undefined, caseNumber))}">${fullText}</a>`
+        html: `<a href="#" class="law-ref precedent-ref" data-ref="precedent" data-case-number="${escapeHtml(caseNumber)}" aria-label="${escapeHtml(getAriaLabel('precedent', undefined, undefined, undefined, caseNumber))}">${escapeHtml(fullText)}</a>`
       })
     }
   }

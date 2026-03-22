@@ -46,14 +46,19 @@ import type {
   ClassificationInput,
 } from './types'
 
+interface ChangeWithDiff {
+  change: ArticleChange
+  oldText: string
+  newText: string
+}
+
 export async function* executeImpactAnalysis(
   request: ImpactTrackerRequest,
   options?: { signal?: AbortSignal; apiKey?: string },
 ): AsyncGenerator<ImpactSSEEvent> {
   const { lawNames, dateFrom, dateTo, mode = 'impact' } = request
   const isOrdinanceSyncMode = mode === 'ordinance-sync'
-  const allChanges: ArticleChange[] = []
-  const allOldNew: Array<{ oldText: string; newText: string }> = []
+  const allChangesWithDiff: ChangeWithDiff[] = []
   const allDownstreamMap = new Map<string, DownstreamImpact[]>()
   const resolvedLaws: ResolvedLaw[] = []
   // B방향: 조례별 상위법령 참조 매핑 (classification에서 사용)
@@ -105,7 +110,7 @@ export async function* executeImpactAnalysis(
 
     // ── B방향: 조례 → 상위법령 참조 추출 + 변경 확인 ──
     if (ordinances.length > 0) {
-      yield* processOrdinances(ordinances, dateFrom, dateTo, allChanges, allOldNew, ordinanceRefContext, options)
+      yield* processOrdinances(ordinances, dateFrom, dateTo, allChangesWithDiff, ordinanceRefContext, options)
     }
 
     // ── A방향: 국가법령 신구법비교 + 위임법령 추적 ──
@@ -113,20 +118,18 @@ export async function* executeImpactAnalysis(
       if (isOrdinanceSyncMode) {
         // ordinance-sync 모드: 국가법령은 B방향으로 전환
         // 해당 법을 참조하는 조례를 찾아서 미반영 체크
-        yield* processNationalLawsAsSync(nationalLaws, dateFrom, dateTo, allChanges, allOldNew, allDownstreamMap, ordinanceRefContext, request, options)
+        yield* processNationalLawsAsSync(nationalLaws, dateFrom, dateTo, allChangesWithDiff, allDownstreamMap, ordinanceRefContext, request, options)
       } else {
-        yield* processNationalLaws(nationalLaws, allChanges, allOldNew, allDownstreamMap, request, options)
+        yield* processNationalLaws(nationalLaws, allChangesWithDiff, allDownstreamMap, request, options)
       }
     }
 
     // 중복 조문 제거 (같은 법령+조문이 A/B방향에서 중복 수집될 수 있음)
-    const deduped = deduplicateChanges(allChanges, allOldNew)
-    allChanges.length = 0
-    allOldNew.length = 0
-    allChanges.push(...deduped.changes)
-    allOldNew.push(...deduped.oldNewPairs)
+    const deduped = deduplicateChanges(allChangesWithDiff)
+    allChangesWithDiff.length = 0
+    allChangesWithDiff.push(...deduped)
 
-    if (allChanges.length === 0) {
+    if (allChangesWithDiff.length === 0) {
       yield { type: 'status', message: '조회 기간 내 변경사항이 없습니다.', progress: 100, step: 'complete' }
       yield { type: 'complete', result: { items: [], summary: buildEmptySummary(dateFrom, dateTo), analyzedAt: new Date().toISOString() } }
       return
@@ -138,18 +141,17 @@ export async function* executeImpactAnalysis(
     const aiSource = await getAISource()
     yield { type: 'ai_source', source: aiSource }
 
-    const classificationInputs: ClassificationInput[] = allChanges.map((change, i) => {
-      const key = `${change.lawId}:${change.joDisplay}`
-      const oldNew = allOldNew[i]
+    const classificationInputs: ClassificationInput[] = allChangesWithDiff.map((entry) => {
+      const key = `${entry.change.lawId}:${entry.change.joDisplay}`
       const downstream = allDownstreamMap.get(key) || []
-      const ordRef = ordinanceRefContext.get(`${change.lawName}:${change.joDisplay}`)
+      const ordRef = ordinanceRefContext.get(`${entry.change.lawName}:${entry.change.joDisplay}`)
       return {
-        lawName: change.lawName,
-        jo: change.jo,
-        joDisplay: change.joDisplay,
-        revisionType: change.revisionType,
-        oldText: oldNew?.oldText,
-        newText: oldNew?.newText,
+        lawName: entry.change.lawName,
+        jo: entry.change.jo,
+        joDisplay: entry.change.joDisplay,
+        revisionType: entry.change.revisionType,
+        oldText: entry.oldText,
+        newText: entry.newText,
         downstreamCount: downstream.length,
         referencingOrdinance: ordRef,
       }
@@ -178,21 +180,20 @@ export async function* executeImpactAnalysis(
 
     // ImpactItem 조립 + 점진적 전송
     const items: ImpactItem[] = []
-    for (let idx = 0; idx < allChanges.length; idx++) {
-      const change = allChanges[idx]
-      const key = `${change.lawId}:${change.joDisplay}`
-      const oldNew = allOldNew[idx]
+    for (let idx = 0; idx < allChangesWithDiff.length; idx++) {
+      const entry = allChangesWithDiff[idx]
+      const key = `${entry.change.lawId}:${entry.change.joDisplay}`
       const downstream = allDownstreamMap.get(key) || []
-      const classification = classificationResults.get(change.jo)
+      const classification = classificationResults.get(entry.change.jo)
 
       const item: ImpactItem = {
-        id: `${change.lawId}-${change.jo}-${idx}`,
-        change,
+        id: `${entry.change.lawId}-${entry.change.jo}-${idx}`,
+        change: entry.change,
         downstreamImpacts: downstream,
-        severity: classification?.severity ?? inferSeverity(change, downstream.length),
+        severity: classification?.severity ?? inferSeverity(entry.change, downstream.length),
         severityReason: classification?.reason ?? '자동 분류 (AI 미응답)',
-        oldText: oldNew?.oldText,
-        newText: oldNew?.newText,
+        oldText: entry.oldText,
+        newText: entry.newText,
       }
 
       items.push(item)
@@ -243,8 +244,7 @@ async function* processOrdinances(
   ordinances: ResolvedLaw[],
   dateFrom: string,
   dateTo: string,
-  allChanges: ArticleChange[],
-  allOldNew: Array<{ oldText: string; newText: string }>,
+  allChangesWithDiff: ChangeWithDiff[],
   ordinanceRefContext: Map<string, { ordinanceName: string; ordinanceArticles: string[] }>,
   options?: { signal?: AbortSignal },
 ): AsyncGenerator<ImpactSSEEvent> {
@@ -320,14 +320,16 @@ async function* processOrdinances(
         })
       }
 
-      allChanges.push(...relevantChanges)
-
-      // oldNew 텍스트도 매핑
-      for (const pair of compParsed.pairs) {
-        const isRelevant = hasWildcard || referencedJos.has(pair.joDisplay)
-        if (isRelevant) {
-          allOldNew.push({ oldText: pair.oldText, newText: pair.newText })
-        }
+      // relevantChanges와 oldNew를 매핑하여 병합 배열에 추가
+      const relevantPairs = compParsed.pairs.filter(pair =>
+        hasWildcard || referencedJos.has(pair.joDisplay)
+      )
+      for (let ci = 0; ci < relevantChanges.length; ci++) {
+        allChangesWithDiff.push({
+          change: relevantChanges[ci],
+          oldText: relevantPairs[ci]?.oldText ?? '',
+          newText: relevantPairs[ci]?.newText ?? '',
+        })
       }
 
       const affectedOrdJos = [...new Set(refs.filter(r => !r.parentJo || referencedJos.has(r.parentJo || '')).map(r => r.ordinanceJo))]
@@ -346,8 +348,7 @@ async function* processOrdinances(
 
 async function* processNationalLaws(
   nationalLaws: ResolvedLaw[],
-  allChanges: ArticleChange[],
-  allOldNew: Array<{ oldText: string; newText: string }>,
+  allChangesWithDiff: ChangeWithDiff[],
   allDownstreamMap: Map<string, DownstreamImpact[]>,
   request: ImpactTrackerRequest,
   options?: { signal?: AbortSignal },
@@ -379,9 +380,12 @@ async function* processNationalLaws(
     const revisionDate = extractDateFromCompare(compareResult.result)
     const changes = buildChangesFromOldNew(parsed, law.lawId, law.mst, revisionDate)
 
-    allChanges.push(...changes)
-    for (const pair of parsed.pairs) {
-      allOldNew.push({ oldText: pair.oldText, newText: pair.newText })
+    for (let ci = 0; ci < changes.length; ci++) {
+      allChangesWithDiff.push({
+        change: changes[ci],
+        oldText: parsed.pairs[ci]?.oldText ?? '',
+        newText: parsed.pairs[ci]?.newText ?? '',
+      })
     }
 
     yield { type: 'changes_found', lawName: law.lawName, changes }
@@ -407,7 +411,7 @@ async function* processNationalLaws(
   }
 
   // Step 3.5: 관련 조례 영향 탐색 (A방향 확장)
-  const changedJoDisplays = [...new Set(allChanges.map(c => c.joDisplay))]
+  const changedJoDisplays = [...new Set(allChangesWithDiff.map(e => e.change.joDisplay))]
   if (changedJoDisplays.length > 0) {
     yield { type: 'status', message: '관련 자치법규 탐색 중...', progress: 55, step: 'tracing' }
 
@@ -449,8 +453,7 @@ async function* processNationalLawsAsSync(
   nationalLaws: ResolvedLaw[],
   dateFrom: string,
   dateTo: string,
-  allChanges: ArticleChange[],
-  allOldNew: Array<{ oldText: string; newText: string }>,
+  allChangesWithDiff: ChangeWithDiff[],
   allDownstreamMap: Map<string, DownstreamImpact[]>,
   ordinanceRefContext: Map<string, { ordinanceName: string; ordinanceArticles: string[] }>,
   request: ImpactTrackerRequest,
@@ -473,16 +476,19 @@ async function* processNationalLawsAsSync(
     const revisionDate = extractDateFromCompare(compareResult.result)
     const changes = buildChangesFromOldNew(parsed, law.lawId, law.mst, revisionDate)
 
-    allChanges.push(...changes)
-    for (const pair of parsed.pairs) {
-      allOldNew.push({ oldText: pair.oldText, newText: pair.newText })
+    for (let ci = 0; ci < changes.length; ci++) {
+      allChangesWithDiff.push({
+        change: changes[ci],
+        oldText: parsed.pairs[ci]?.oldText ?? '',
+        newText: parsed.pairs[ci]?.newText ?? '',
+      })
     }
 
     yield { type: 'changes_found', lawName: law.lawName, changes }
   }
 
   // Step 3: 관련 조례 탐색 (미반영 후보)
-  const changedJoDisplays = [...new Set(allChanges.map(c => c.joDisplay))]
+  const changedJoDisplays = [...new Set(allChangesWithDiff.map(e => e.change.joDisplay))]
   if (changedJoDisplays.length > 0) {
     yield { type: 'status', message: '관련 조례 미반영 탐색 중...', progress: 40, step: 'tracing' }
 
@@ -525,23 +531,18 @@ async function* processNationalLawsAsSync(
 
 // ── 유틸 ──
 
-function deduplicateChanges(
-  changes: ArticleChange[],
-  oldNewPairs: Array<{ oldText: string; newText: string }>,
-): { changes: ArticleChange[]; oldNewPairs: Array<{ oldText: string; newText: string }> } {
+function deduplicateChanges(entries: ChangeWithDiff[]): ChangeWithDiff[] {
   const seen = new Set<string>()
-  const dedupedChanges: ArticleChange[] = []
-  const dedupedOldNew: Array<{ oldText: string; newText: string }> = []
+  const deduped: ChangeWithDiff[] = []
 
-  for (let i = 0; i < changes.length; i++) {
-    const key = `${changes[i].lawId}:${changes[i].joDisplay}`
+  for (const entry of entries) {
+    const key = `${entry.change.lawId}:${entry.change.joDisplay}`
     if (seen.has(key)) continue
     seen.add(key)
-    dedupedChanges.push(changes[i])
-    if (oldNewPairs[i]) dedupedOldNew.push(oldNewPairs[i])
+    deduped.push(entry)
   }
 
-  return { changes: dedupedChanges, oldNewPairs: dedupedOldNew }
+  return deduped
 }
 
 function extractDateFromCompare(text: string): string {

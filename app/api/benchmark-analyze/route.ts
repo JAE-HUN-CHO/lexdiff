@@ -130,6 +130,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '비교할 조례가 2개 이상 필요합니다.' }, { status: 400 })
   }
 
+  if (keyword.length > 200) {
+    return NextResponse.json({ error: 'keyword는 200자 이하만 허용됩니다.' }, { status: 400 })
+  }
+  if (focus && focus.length > 500) {
+    return NextResponse.json({ error: 'focus는 500자 이하만 허용됩니다.' }, { status: 400 })
+  }
+
   // ordinanceSeq 숫자 검증
   if (ordinances.some(o => !/^\d+$/.test(o.ordinanceSeq))) {
     return NextResponse.json({ error: 'ordinanceSeq는 숫자만 허용됩니다.' }, { status: 400 })

@@ -464,8 +464,6 @@ export async function* executeGeminiRAGStream(
         }
       }
 
-      currentProgress = Math.min(8 + ((turnCount + 0.5) * progressPerTurn), 85)
-
       // 도구 결과 이벤트
       for (const r of results) {
         yield {
@@ -526,7 +524,19 @@ export async function* executeGeminiRAGStream(
         // Auto-chain 결과 추가 후에도 MAX_TOOL_RESULTS 가드 적용
         while (allToolResults.length > MAX_TOOL_RESULTS) {
           const errIdx = allToolResults.findIndex(r => r.isError)
-          allToolResults.splice(errIdx >= 0 ? errIdx : 0, 1)
+          if (errIdx >= 0) {
+            allToolResults.splice(errIdx, 1)
+          } else {
+            let minIdx = 1 // index 0 (첫 결과) 보호
+            let minLen = allToolResults[1]?.result.length ?? Infinity
+            for (let i = 2; i < allToolResults.length; i++) {
+              if (allToolResults[i].result.length < minLen) {
+                minLen = allToolResults[i].result.length
+                minIdx = i
+              }
+            }
+            allToolResults.splice(minIdx, 1)
+          }
         }
       }
 
@@ -552,7 +562,12 @@ export async function* executeGeminiRAGStream(
 
       turnCount++
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
+      const rawMessage = error instanceof Error ? error.message : String(error)
+      // Sanitize: strip API keys and Bearer tokens that may leak from error messages
+      const message = rawMessage
+        .replace(/key=\S+/gi, 'key=[REDACTED]')
+        .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')
+        .slice(0, 200)
       warnings.push(`Gemini API 오류: ${message}`)
       yield { type: 'error', message }
       break

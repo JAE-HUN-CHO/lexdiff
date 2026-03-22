@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
+import { safeErrorResponse } from "@/lib/api-error"
 
 const LAW_API_BASE = "https://www.law.go.kr/DRF/lawSearch.do"
 const OC = process.env.LAW_OC || ""
@@ -150,9 +151,6 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     debugLogger.error("법령 연혁 조회 실패", { lawName, error: String(error) })
-    return NextResponse.json(
-      { error: "법령 연혁 조회에 실패했습니다", detail: String(error) },
-      { status: 500 }
-    )
+    return safeErrorResponse(error, "법령 연혁 조회에 실패했습니다")
   }
 }
