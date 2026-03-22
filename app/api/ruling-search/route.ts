@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 import { safeErrorResponse } from "@/lib/api-error"
 
 interface RulingSearchResult {
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
     })
 
     const url = `https://www.law.go.kr/DRF/lawSearch.do?${params.toString()}`
-    const response = await fetch(url)
+    const response = await fetchWithTimeout(url)
 
     if (!response.ok) {
       throw new Error(`API 오류: ${response.status}`)

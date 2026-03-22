@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 interface SearchResult {
   id: string
@@ -42,7 +43,7 @@ async function searchLaws(query: string, apiKey: string, maxResults: number): Pr
       display: maxResults.toString(),
     })
 
-    const response = await fetch(`https://www.law.go.kr/DRF/lawSearch.do?${params}`)
+    const response = await fetchWithTimeout(`https://www.law.go.kr/DRF/lawSearch.do?${params}`)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
     const xml = await response.text()
@@ -93,7 +94,7 @@ async function searchAdminRules(query: string, apiKey: string, maxResults: numbe
       display: maxResults.toString(),
     })
 
-    const response = await fetch(`https://www.law.go.kr/DRF/lawSearch.do?${params}`)
+    const response = await fetchWithTimeout(`https://www.law.go.kr/DRF/lawSearch.do?${params}`)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
     const xml = await response.text()
@@ -143,7 +144,7 @@ async function searchOrdinances(query: string, apiKey: string, maxResults: numbe
       display: maxResults.toString(),
     })
 
-    const response = await fetch(`https://www.law.go.kr/DRF/lawSearch.do?${params}`)
+    const response = await fetchWithTimeout(`https://www.law.go.kr/DRF/lawSearch.do?${params}`)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
     const xml = await response.text()

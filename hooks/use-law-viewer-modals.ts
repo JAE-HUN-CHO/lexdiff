@@ -3,6 +3,7 @@ import type { LawMeta, LawArticle } from '@/lib/law-types'
 import { formatJO } from '@/lib/law-parser'
 import { debugLogger } from '@/lib/debug-logger'
 import { LAW_GO_KR } from '@/lib/law-constants'
+import { escapeHtml } from '@/lib/law-data-utils'
 import {
   fetchOrdinanceArticle,
   fetchOldLawArticle,
@@ -289,12 +290,13 @@ export function useLawViewerModals(meta: LawMeta, activeArticle: LawArticle | un
       if (hierarchy.upperLaws?.length) {
         html += `<div><h4 class="font-semibold mb-2">상위 법령</h4><ul class="list-disc list-inside space-y-1">`
         for (const upper of hierarchy.upperLaws) {
-          html += `<li><a href="#" class="law-ref text-primary hover:underline" data-ref="law" data-law="${upper.lawName}">${upper.lawName}</a></li>`
+          const safe = escapeHtml(upper.lawName)
+          html += `<li><a href="#" class="law-ref text-primary hover:underline" data-ref="law" data-law="${safe}">${safe}</a></li>`
         }
         html += `</ul></div>`
       }
 
-      html += `<div><h4 class="font-semibold mb-2">현재 법령</h4><p>${hierarchy.lawName}</p>`
+      html += `<div><h4 class="font-semibold mb-2">현재 법령</h4><p>${escapeHtml(hierarchy.lawName)}</p>`
       if (hierarchy.effectiveDate) html += `<p class="text-sm text-muted-foreground">시행일: ${hierarchy.effectiveDate}</p>`
       html += `</div>`
 
@@ -304,12 +306,12 @@ export function useLawViewerModals(meta: LawMeta, activeArticle: LawArticle | un
 
         if (decrees.length > 0) {
           html += `<div><h4 class="font-semibold mb-2">시행령</h4><ul class="list-disc list-inside space-y-1">`
-          for (const d of decrees) html += `<li><a href="#" class="law-ref text-primary hover:underline" data-ref="law" data-law="${d.lawName}">${d.lawName}</a></li>`
+          for (const d of decrees) { const safe = escapeHtml(d.lawName); html += `<li><a href="#" class="law-ref text-primary hover:underline" data-ref="law" data-law="${safe}">${safe}</a></li>` }
           html += `</ul></div>`
         }
         if (rules.length > 0) {
           html += `<div><h4 class="font-semibold mb-2">시행규칙</h4><ul class="list-disc list-inside space-y-1">`
-          for (const r of rules) html += `<li><a href="#" class="law-ref text-primary hover:underline" data-ref="law" data-law="${r.lawName}">${r.lawName}</a></li>`
+          for (const r of rules) { const safe = escapeHtml(r.lawName); html += `<li><a href="#" class="law-ref text-primary hover:underline" data-ref="law" data-law="${safe}">${safe}</a></li>` }
           html += `</ul></div>`
         }
       }

@@ -7,6 +7,7 @@ import iconv from "iconv-lite"
 import { validateExternalUrl } from "@/lib/url-validator"
 import { validate, lawHtmlRequestSchema, createErrorResponse } from "@/lib/api-validation"
 import { LAW_GO_KR, toLawAbsoluteUrl } from "@/lib/law-constants"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 /**
  * 개정 태그 키워드를 4가지 타입으로 분류
@@ -154,7 +155,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "허용되지 않은 URL입니다." }, { status: 400 })
     }
 
-    const res = await fetch(targetUrl, {
+    const res = await fetchWithTimeout(targetUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
         "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",

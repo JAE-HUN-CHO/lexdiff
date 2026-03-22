@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { debugLogger } from "@/lib/debug-logger"
 import type { PrecedentSearchResult, PrecedentDetail } from "@/lib/precedent-parser"
 import {
   getPrecedentSearchCache,
@@ -113,7 +114,7 @@ export function usePrecedents(
         if (err instanceof Error && err.name === "AbortError") {
           return // 취소된 요청은 무시
         }
-        console.error("[use-precedents] Error:", err)
+        debugLogger.error("[use-precedents] Error:", err)
         setError(err instanceof Error ? err.message : "판례 검색 실패")
         setPrecedents([])
         setTotalCount(0)
@@ -154,7 +155,7 @@ export function usePrecedents(
 
       return data as PrecedentDetail
     } catch (err) {
-      console.error("[use-precedents] fetchDetail error:", err)
+      debugLogger.error("[use-precedents] fetchDetail error:", err)
       return null
     }
   }, [])

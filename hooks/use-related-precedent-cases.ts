@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo } from "react"
+import { debugLogger } from "@/lib/debug-logger"
 import type { PrecedentSearchResult } from "@/lib/precedent-parser"
 import { formatPrecedentDate } from "@/lib/precedent-parser"
 import { buildPrecedentHtml } from "@/lib/content-click-handlers"
@@ -137,7 +138,7 @@ export function useRelatedPrecedentCases({
         setRelatedCases(related)
       } catch (e) {
         if ((e as Error).name === 'AbortError') return
-        console.error('관련 심급 검색 실패:', e)
+        debugLogger.error('관련 심급 검색 실패:', e)
         setRelatedCases([])
       } finally {
         if (!signal.aborted) {
@@ -186,7 +187,7 @@ export function useRelatedPrecedentCases({
         })
       }
     } catch (e) {
-      console.error('판례 상세 조회 실패:', e)
+      debugLogger.error('판례 상세 조회 실패:', e)
       setRefModal({
         open: true,
         title: '판례 조회 실패',

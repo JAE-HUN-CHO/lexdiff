@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 /**
  * GET /api/admrul
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     debugLogger.debug("[admrul] Fetching:", apiUrl.toString())
 
-    const response = await fetch(apiUrl.toString(), {
+    const response = await fetchWithTimeout(apiUrl.toString(), {
       // No caching for large admin rules (over 2MB causes Next.js cache warnings)
       cache: "no-store",
     })

@@ -7,6 +7,8 @@ import sanitizeHtml from "sanitize-html"
 import iconv from "iconv-lite"
 import { buildJO } from "@/lib/law-parser"
 import { LAW_GO_KR, toLawAbsoluteUrl } from "@/lib/law-constants"
+import { validateExternalUrl } from "@/lib/url-validator"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 function ensureOc(url: string, oc: string): string {
   try {
@@ -248,7 +250,7 @@ export async function GET(req: Request) {
     const sp = buildParams({ target: "eflaw", type: "HTML", OC, ID: lawId || undefined, MST: mstParam || undefined, JO: joParam, efYd: efYd || undefined })
     const url = `${DRF_BASE}?${sp.toString()}`
     debugLogger.debug("[drf-html] fetch:", url)
-    const res = await fetch(url, { next: { revalidate: 1800 } })
+    const res = await fetchWithTimeout(url, { next: { revalidate: 1800 } })
     const ctype = res.headers.get("content-type") || ""
     const buf = Buffer.from(await res.arrayBuffer())
     let html = buf.toString("utf8")
@@ -262,8 +264,12 @@ export async function GET(req: Request) {
     if (iframeSrc) {
       try {
         const abs = ensureOc(new URL(iframeSrc, DRF_BASE).toString(), OC)
+        if (!validateExternalUrl(abs)) {
+          debugLogger.warning("[drf-html] iframe src blocked by SSRF check:", abs)
+          return NextResponse.json({ html: bodyHtml, source: "drf" })
+        }
         debugLogger.debug("[drf-html] following frame:", abs)
-        const fr = await fetch(abs, { next: { revalidate: 1800 } })
+        const fr = await fetchWithTimeout(abs, { next: { revalidate: 1800 } })
         const fctype = fr.headers.get("content-type") || ""
         const fbuf = Buffer.from(await fr.arrayBuffer())
         let fhtml = fbuf.toString("utf8")

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { Card } from "@/components/ui/card"
 import type { LawArticle, LawMeta, RevisionHistoryItem } from "@/lib/law-types"
 import { extractArticleText } from "@/lib/law-xml-parser"
-import { buildJO, formatJO, type ParsedRelatedLaw } from "@/lib/law-parser"
+import { buildJO, formatJO, formatSimpleJo as formatSimpleJoBase, type ParsedRelatedLaw } from "@/lib/law-parser"
 
 // Dynamic import for ReferenceModal (reduce initial bundle)
 const ReferenceModal = dynamic(
@@ -624,53 +624,10 @@ function LawViewerComponent({
     }
   }, [meta.lawTitle, meta.caseNumber, isPrecedent, isOrdinance, isFullView, activeArticle])
 
-  const formatSimpleJo = useCallback((jo: string, forceOrdinance = false): string => {
-    // Already formatted (e.g., "제1조", "제10조의2")
-    if (jo.startsWith("제") && jo.includes("조")) {
-      return jo
-    }
-
-    // 6자리 숫자 코드 처리
-    if (jo.length === 6 && /^\d{6}$/.test(jo)) {
-      // 조례 여부 판단: isOrdinance 또는 forceOrdinance가 true
-      const shouldUseOrdinanceFormat = isOrdinance || forceOrdinance
-
-      if (shouldUseOrdinanceFormat) {
-        // Ordinance format: AABBCC (AA = article, BB = branch, CC = sub)
-        // Example: "010000" = 제1조, "010100" = 제1조의1
-        const articleNum = Number.parseInt(jo.substring(0, 2), 10)
-        const branchNum = Number.parseInt(jo.substring(2, 4), 10)
-        const subNum = Number.parseInt(jo.substring(4, 6), 10)
-
-        let result = `제${articleNum}조`
-        if (branchNum > 0) result += `의${branchNum}`
-        if (subNum > 0) result += `-${subNum}`
-
-        return result
-      } else {
-        // Law format: AAAABB (AAAA = article, BB = branch)
-        const articleNum = Number.parseInt(jo.substring(0, 4), 10)
-        const branchNum = Number.parseInt(jo.substring(4, 6), 10)
-        return branchNum === 0 ? `제${articleNum}조` : `제${articleNum}조의${branchNum}`
-      }
-    }
-
-    // 8-digit code format (fallback)
-    if (jo.length === 8 && /^\d{8}$/.test(jo)) {
-      const articleNum = Number.parseInt(jo.substring(0, 4), 10)
-      const branchNum = Number.parseInt(jo.substring(4, 6), 10)
-      const subNum = Number.parseInt(jo.substring(6, 8), 10)
-
-      let result = `제${articleNum}조`
-      if (branchNum > 0) result += `의${branchNum}`
-      if (subNum > 0) result += `-${subNum}`
-
-      return result
-    }
-
-    // Fallback: return as-is
-    return jo
-  }, [isOrdinance])
+  const formatSimpleJo = useCallback(
+    (jo: string, forceOrdinance = false): string => formatSimpleJoBase(jo, isOrdinance || forceOrdinance),
+    [isOrdinance],
+  )
 
   // Content Click Handlers - 링크 클릭 이벤트 처리 (분리된 훅 사용)
   const contentClickContext: ContentClickContext = useMemo(() => ({

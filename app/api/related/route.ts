@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
 import { escapeHtml } from "@/lib/law-data-utils"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 const LAW_SEARCH_API = "https://www.law.go.kr/DRF/lawSearch.do"
 const LAW_SERVICE_API = "https://www.law.go.kr/DRF/lawService.do"
@@ -83,7 +84,7 @@ export async function GET(request: Request) {
     // 1) Find decree/rule law ID via lawSearch
     const searchParamsDRF = new URLSearchParams({ target: "law", type: "XML", OC, query })
     const searchUrl = `${LAW_SEARCH_API}?${searchParamsDRF.toString()}`
-    const searchRes = await fetch(searchUrl, { next: { revalidate: 3600 } })
+    const searchRes = await fetchWithTimeout(searchUrl, { next: { revalidate: 3600 } })
     const searchXml = await searchRes.text()
     const lawId = searchXml.match(/<법령ID>([^<]+)<\/법령ID>/)?.[1] || ""
     const lawName = searchXml.match(/<법령명>([^<]+)<\/법령명>/)?.[1] || `${baseLaw} ${suffix}`
@@ -94,7 +95,7 @@ export async function GET(request: Request) {
     // 2) Fetch full decree/rule XML
     const eflawParams = new URLSearchParams({ target: "eflaw", type: "XML", OC, ID: lawId })
     const eflawUrl = `${LAW_SERVICE_API}?${eflawParams.toString()}`
-    const eflawRes = await fetch(eflawUrl, { next: { revalidate: 3600 } })
+    const eflawRes = await fetchWithTimeout(eflawUrl, { next: { revalidate: 3600 } })
     const eflawXml = await eflawRes.text()
 
     // 3) Prepare match target from joLabel (e.g., "38조", "38조의2")

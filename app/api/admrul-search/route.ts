@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 /**
  * GET /api/admrul-search
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     debugLogger.debug("[admrul-search] Fetching:", apiUrl.toString())
 
-    const response = await fetch(apiUrl.toString(), {
+    const response = await fetchWithTimeout(apiUrl.toString(), {
       next: { revalidate: 3600 }, // Cache for 1 hour
     })
 

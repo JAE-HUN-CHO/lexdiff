@@ -70,12 +70,13 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
       debugLogger.success("조문별 개정이력 조회 완료", { count: history.length, history })
     } catch (err) {
       debugLogger.error('[ComparisonModal] 조문별 개정이력 조회 오류:', err)
-      debugLogger.error("조문별 개정이력 조회 실패", err)
       setArticleHistory([])
     }
   }, [lawId, mst, targetJo, lawTitle])
 
-  const loadComparison = useCallback(async (revisionDate?: string, revisionNumber?: string, depth = 0) => {
+  const abortRef = useRef<AbortController | null>(null)
+
+  const loadComparison = useCallback(async (revisionDate?: string, revisionNumber?: string, depth = 0, signal?: AbortSignal) => {
     if (depth >= 5) {
       setError("비교 데이터를 찾을 수 없습니다. 적절한 개정 버전이 없습니다.")
       setIsLoading(false)
@@ -101,20 +102,21 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
 
       debugLogger.info("신·구법 비교 로드 시작", { lawTitle, lawId, mst, targetJo, revisionDate, revisionNumber })
 
-      const response = await fetch(`/api/oldnew?${params.toString()}`)
+      const response = await fetch(`/api/oldnew?${params.toString()}`, { signal })
 
       if (!response.ok) {
         throw new Error("신·구법 대조 조회 실패")
       }
 
       const xmlText = await response.text()
+      if (signal?.aborted) return
       const comparisonData = parseOldNewXML(xmlText)
 
       const today = new Date()
       const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`
 
       if (comparisonData.newVersion.effectiveDate && comparisonData.newVersion.effectiveDate > todayStr) {
-        await loadComparison(comparisonData.oldVersion.promulgationDate, comparisonData.oldVersion.promulgationNumber, depth + 1)
+        await loadComparison(comparisonData.oldVersion.promulgationDate, comparisonData.oldVersion.promulgationNumber, depth + 1, signal)
         return
       }
 
@@ -123,7 +125,7 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
         comparisonData.newVersion.promulgationDate &&
         comparisonData.oldVersion.promulgationDate === comparisonData.newVersion.promulgationDate
       ) {
-        await loadComparison(comparisonData.oldVersion.promulgationDate, comparisonData.oldVersion.promulgationNumber, depth + 1)
+        await loadComparison(comparisonData.oldVersion.promulgationDate, comparisonData.oldVersion.promulgationNumber, depth + 1, signal)
         return
       }
 
@@ -132,27 +134,39 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
         comparisonData.newVersion.effectiveDate &&
         comparisonData.oldVersion.effectiveDate > comparisonData.newVersion.effectiveDate
       ) {
-        await loadComparison(comparisonData.oldVersion.promulgationDate, comparisonData.oldVersion.promulgationNumber, depth + 1)
+        await loadComparison(comparisonData.oldVersion.promulgationDate, comparisonData.oldVersion.promulgationNumber, depth + 1, signal)
         return
       }
 
+      if (signal?.aborted) return
       setComparison(comparisonData)
       debugLogger.success("신·구법 비교 로드 완료", { changeCount: comparisonData.changes.length })
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       const errorMsg = err instanceof Error ? err.message : "알 수 없는 오류"
       setError(errorMsg)
       debugLogger.error("신·구법 비교 로드 실패", err)
     } finally {
-      setIsLoading(false)
+      if (!signal?.aborted) setIsLoading(false)
     }
   }, [lawId, mst, lawTitle, targetJo])
 
   useEffect(() => {
     if (isOpen && (lawId || mst)) {
+      // 이전 요청 취소 + 상태 초기화
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      setComparison(null)
+      setError(null)
+      setArticleHistory([])
       setRevisionStack([{ date: undefined, number: undefined }])
       setCurrentRevisionIndex(0)
       loadRevisionHistory()
-      loadComparison()
+      loadComparison(undefined, undefined, 0, controller.signal)
+
+      return () => { controller.abort() }
     }
   }, [isOpen, lawId, mst, loadRevisionHistory, loadComparison])
 
@@ -184,16 +198,27 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
         const newDiv = newScrollRef.current
 
         if (oldDiv && newDiv) {
-          const oldHtml = oldDiv.innerHTML
-          const index = oldHtml.indexOf(targetText)
+          // DOM querySelector로 정확한 요소 위치 기반 스크롤 (HTML 인덱스 비율 방식보다 정확)
+          const findArticleElement = (container: HTMLElement): HTMLElement | null => {
+            // data-jo 속성이 있는 요소 우선 탐색
+            const byDataJo = container.querySelector(`[data-jo="${targetJo}"]`) as HTMLElement | null
+            if (byDataJo) return byDataJo
+            // 텍스트 내용으로 조문 제목 탐색 (h3, h4, strong, b 등)
+            const headings = container.querySelectorAll('h3, h4, strong, b, .article-title')
+            for (const el of headings) {
+              if (el.textContent?.includes(targetText)) return el as HTMLElement
+            }
+            return null
+          }
 
-          if (index !== -1) {
-            const totalHeight = oldDiv.scrollHeight
-            const scrollRatio = index / oldHtml.length
-            const scrollPosition = scrollRatio * totalHeight
-
-            oldDiv.scrollTo({ top: scrollPosition, behavior: "smooth" })
-            newDiv.scrollTo({ top: scrollPosition, behavior: "smooth" })
+          const oldTarget = findArticleElement(oldDiv)
+          if (oldTarget) {
+            oldTarget.scrollIntoView({ behavior: "smooth", block: "start" })
+            // 신법 패널: 동일 조문을 독립적으로 탐색
+            const newTarget = findArticleElement(newDiv)
+            if (newTarget) {
+              newTarget.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
           }
         }
       }, 300)

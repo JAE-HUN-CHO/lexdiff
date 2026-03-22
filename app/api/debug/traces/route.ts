@@ -7,6 +7,7 @@
  */
 
 import { NextRequest } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { traceLogger } from '@/lib/trace-logger'
 
 export async function GET(request: NextRequest) {
@@ -21,7 +22,9 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: 'Not available' }, { status: 404 })
   }
   const authHeader = request.headers.get('authorization')
-  if (!authHeader || authHeader !== `Bearer ${debugToken}`) {
+  const expected = `Bearer ${debugToken}`
+  if (!authHeader || authHeader.length !== expected.length ||
+      !timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

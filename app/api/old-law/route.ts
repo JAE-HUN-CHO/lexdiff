@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 const LAW_SERVICE_BASE = "https://www.law.go.kr/DRF/lawService.do"
 const LAW_SEARCH_BASE = "https://www.law.go.kr/DRF/lawSearch.do"
@@ -130,7 +131,7 @@ export async function GET(request: Request) {
     const historyUrl = `${LAW_SEARCH_BASE}?${historyParams.toString()}`
     debugLogger.info("연혁 목록 조회", { url: historyUrl })
 
-    const historyResponse = await fetch(historyUrl, {
+    const historyResponse = await fetchWithTimeout(historyUrl, {
       next: { revalidate: 86400 },
     })
 
@@ -185,7 +186,7 @@ export async function GET(request: Request) {
     const lawUrl = `${LAW_SERVICE_BASE}?${lawParams.toString()}`
     debugLogger.info("구법령 전문 조회", { url: lawUrl })
 
-    const lawResponse = await fetch(lawUrl, {
+    const lawResponse = await fetchWithTimeout(lawUrl, {
       next: { revalidate: 604800 }, // 7일 캐싱 (연혁법은 변경 없음)
     })
 

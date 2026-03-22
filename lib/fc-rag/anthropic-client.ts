@@ -102,7 +102,7 @@ export async function callAnthropic(
     '--no-session-persistence',
     '--max-turns', '20',
     '--system-prompt', systemPrompt,
-    prompt,
+    '--', prompt,
   ]
 
   const env = getSubprocessEnv({ ANTHROPIC_API_KEY: getOAuthToken() })
@@ -233,7 +233,7 @@ export async function* callAnthropicStream(
     '--strict-mcp-config',
     '--disallowed-tools', 'ToolSearch,Bash,Read,Edit,Write,Glob,Grep',
     '--system-prompt', systemPrompt,
-    prompt,
+    '--', prompt,
   ]
 
   const env = getSubprocessEnv({ ANTHROPIC_API_KEY: getOAuthToken() })
@@ -246,9 +246,12 @@ export async function* callAnthropicStream(
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  // stderr 수집 (에러 진단용)
+  // stderr 수집 (에러 진단용, 최대 10KB 제한)
+  const MAX_STDERR = 10_240
   let stderrText = ''
-  proc.stderr!.on('data', (chunk: Buffer) => { stderrText += chunk.toString() })
+  proc.stderr!.on('data', (chunk: Buffer) => {
+    if (stderrText.length < MAX_STDERR) stderrText += chunk.toString().slice(0, MAX_STDERR - stderrText.length)
+  })
 
   // 프로세스 종료 Promise (미리 등록하여 이벤트 유실 방지)
   const exitPromise = new Promise<number | null>(resolve => {

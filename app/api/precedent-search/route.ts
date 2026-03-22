@@ -8,6 +8,7 @@ import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
 import { parsePrecedentSearchXML } from "@/lib/precedent-parser"
 import { extractRelationsFromPrecedents } from "@/lib/relation-graph/extractors/precedent-extractor"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 import { storeRelationsAsync } from "@/lib/relation-graph/relation-db"
 
 export async function GET(request: NextRequest) {
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
     }
 
     const url = `https://www.law.go.kr/DRF/lawSearch.do?${params.toString()}`
-    const response = await fetch(url)
+    const response = await fetchWithTimeout(url)
 
     if (!response.ok) {
       throw new Error(`API 오류: ${response.status}`)

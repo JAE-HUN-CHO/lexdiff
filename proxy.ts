@@ -10,6 +10,25 @@ const RATE_LIMITS = {
 
 const AI_ENDPOINTS = ["/api/fc-rag", "/api/summarize", "/api/annex-to-markdown"]
 
+// 보안 응답 헤더
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "X-DNS-Prefetch-Control": "off",
+}
+
+// POST body 크기 제한 (Content-Length 기반 사전 검증)
+const MAX_BODY_SIZE: Record<string, number> = {
+  "/api/hwp-to-html": 20 * 1024 * 1024,
+  "/api/annex-to-markdown": 10 * 1024 * 1024,
+  "/api/fc-rag": 50 * 1024,
+  "/api/benchmark-analyze": 1024 * 1024,
+  "/api/impact-tracker": 512 * 1024,
+  "/api/summarize": 200 * 1024,
+}
+const DEFAULT_MAX_BODY = 1024 * 1024
+
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -19,6 +38,18 @@ export default async function proxy(request: NextRequest) {
 
   if (pathname === "/api/health" || pathname.startsWith("/api/_")) {
     return NextResponse.next()
+  }
+
+  // POST body 크기 사전 검증
+  if (request.method === "POST") {
+    const contentLength = Number(request.headers.get("content-length") || "0")
+    const maxSize = MAX_BODY_SIZE[pathname] ?? DEFAULT_MAX_BODY
+    if (contentLength > maxSize) {
+      return NextResponse.json(
+        { error: "요청 본문이 너무 큽니다." },
+        { status: 413, headers: SECURITY_HEADERS },
+      )
+    }
   }
 
   const isAIEndpoint = AI_ENDPOINTS.some((endpoint) => pathname.startsWith(endpoint))
@@ -54,9 +85,14 @@ export default async function proxy(request: NextRequest) {
   }
 
   const response = NextResponse.next()
+  // 레이트리밋 헤더
   response.headers.set("X-RateLimit-Limit", String(limit.requests))
   response.headers.set("X-RateLimit-Remaining", String(remaining))
   response.headers.set("X-RateLimit-Reset", String(Math.ceil(resetTime / 1000)))
+  // 보안 헤더
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value)
+  }
   return response
 }
 

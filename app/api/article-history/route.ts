@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 const LAW_API_BASE = "https://www.law.go.kr/DRF/lawService.do"
 const OC = process.env.LAW_OC || ""
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     debugLogger.info("조문별 변경이력 API 호출", { lawId, jo })
     debugLogger.debug("[조문이력 API] Full URL:", url)
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       next: { revalidate: 3600 },
     })
 

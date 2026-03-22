@@ -138,13 +138,19 @@ export async function executeTool(
 
     // 개별 도구 타임아웃 (법제처 API hang 방지)
     const TOOL_TIMEOUT_MS = 30_000
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`도구 타임아웃 (${TOOL_TIMEOUT_MS}ms): ${name}`)), TOOL_TIMEOUT_MS),
-    )
-    const response = await Promise.race([
-      tool.handler(apiClient, parsedArgs),
-      timeoutPromise,
-    ])
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`도구 타임아웃 (${TOOL_TIMEOUT_MS}ms): ${name}`)), TOOL_TIMEOUT_MS)
+    })
+    let response: Awaited<ReturnType<typeof tool.handler>>
+    try {
+      response = await Promise.race([
+        tool.handler(apiClient, parsedArgs),
+        timeoutPromise,
+      ])
+    } finally {
+      clearTimeout(timer)
+    }
     const text = response.content.map(c => c.text).join('\n')
     const truncated = truncateForContext(text, name)
     const result: ToolCallResult = {

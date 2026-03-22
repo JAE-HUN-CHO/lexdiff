@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 import type { LawAnnex, AnnexKind } from "@/lib/law-types"
 
 const LAW_API_BASE = "https://www.law.go.kr/DRF/lawSearch.do"
@@ -135,43 +136,6 @@ function extractParentLawName(lawName: string): string | null {
 /**
  * 법제처 API에서 별표 목록을 가져와 LawAnnex[]로 변환
  */
-/**
- * fetch with timeout + 1회 재시도 (법제처 API 일시 오류 대응)
- */
-async function fetchWithTimeout(url: string, timeoutMs = 15000): Promise<Response> {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      cache: 'no-store',
-    })
-    clearTimeout(timeoutId)
-
-    // 429/503/504: 1회 재시도 (2초 대기)
-    if ([429, 503, 504].includes(response.status)) {
-      debugLogger.warning("별표 API 일시 오류, 재시도", { status: response.status, url: url.substring(0, 80) })
-      await new Promise(r => setTimeout(r, 2000))
-      const retryController = new AbortController()
-      const retryTimeout = setTimeout(() => retryController.abort(), timeoutMs)
-      try {
-        const retry = await fetch(url, { signal: retryController.signal, cache: 'no-store' })
-        clearTimeout(retryTimeout)
-        return retry
-      } catch (retryErr) {
-        clearTimeout(retryTimeout)
-        throw retryErr
-      }
-    }
-
-    return response
-  } catch (err) {
-    clearTimeout(timeoutId)
-    throw err
-  }
-}
-
 async function fetchAnnexesFromApi(
   query: string,
   target: string,

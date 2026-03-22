@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from "next/server"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 interface LawStats {
   constitution: number    // 헌법
@@ -25,7 +26,7 @@ interface LawStats {
  */
 async function fetchFromStatisticsPage(): Promise<Partial<LawStats> | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       "https://www.law.go.kr/lawStatistics.do?menuId=13&subMenuId=557",
       {
         next: { revalidate: 86400 },
@@ -89,7 +90,7 @@ async function fetchDrfCount(target: string, query: string, apiKey: string): Pro
     const params = new URLSearchParams({
       OC: apiKey, target, type: "XML", query, display: "1",
     })
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://www.law.go.kr/DRF/lawSearch.do?${params}`,
       { next: { revalidate: 86400 } }
     )

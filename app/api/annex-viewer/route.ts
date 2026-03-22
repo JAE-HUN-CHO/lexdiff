@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 /**
  * 별표 뷰어 URL 조회 API
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
       lsiSeq,
     })
 
-    const response = await fetch("https://www.law.go.kr/LSW/lsBylContentsInfoR.do", {
+    const response = await fetchWithTimeout("https://www.law.go.kr/LSW/lsBylContentsInfoR.do", {
       method: "POST",
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",

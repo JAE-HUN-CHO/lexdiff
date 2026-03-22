@@ -3,6 +3,7 @@ import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
 import { normalizeLawSearchText, resolveLawAlias } from "@/lib/search-normalizer"
 import { validate, searchQuerySchema, createErrorResponse } from "@/lib/api-validation"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 const LAW_API_BASE = "https://www.law.go.kr/DRF/lawSearch.do"
 const OC = process.env.LAW_OC || ""
@@ -100,7 +101,7 @@ export async function GET(request: Request) {
         url: exactUrl,
       })
 
-      const exactResponse = await fetch(exactUrl, {
+      const exactResponse = await fetchWithTimeout(exactUrl, {
         next: { revalidate: 3600 },
       })
 
@@ -135,7 +136,7 @@ export async function GET(request: Request) {
       })
 
       const firstUrl = `${LAW_API_BASE}?${firstParams.toString()}`
-      const firstResponse = await fetch(firstUrl, { next: { revalidate: 3600 } })
+      const firstResponse = await fetchWithTimeout(firstUrl, { next: { revalidate: 3600 } })
 
       if (!firstResponse.ok) {
         throw new Error(`API 응답 오류: ${firstResponse.status}`)
@@ -165,7 +166,7 @@ export async function GET(request: Request) {
           })
 
           const pageUrl = `${LAW_API_BASE}?${pageParams.toString()}`
-          const pageResponse = await fetch(pageUrl, { next: { revalidate: 3600 } })
+          const pageResponse = await fetchWithTimeout(pageUrl, { next: { revalidate: 3600 } })
 
           if (!pageResponse.ok) continue
 
@@ -215,7 +216,7 @@ export async function GET(request: Request) {
       url,
     })
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       next: { revalidate: 3600 },
     })
 

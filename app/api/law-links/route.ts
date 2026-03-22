@@ -3,6 +3,7 @@ import { load, type CheerioAPI, type Cheerio } from "cheerio"
 import type { Element } from "domhandler"
 import iconv from "iconv-lite"
 import { validateExternalUrl } from "@/lib/url-validator"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 function absUrl(href: string): string {
   try {
@@ -63,7 +64,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "허용되지 않은 URL입니다." }, { status: 400 })
     }
 
-    const res = await fetch(targetUrl, {
+    const res = await fetchWithTimeout(targetUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
         "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",

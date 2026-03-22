@@ -1,10 +1,10 @@
 # Active Context
 
-**마지막 업데이트**: 2026-03-22 (5차 프로덕션 코드리뷰 — 보안/성능/DRY 전면 개선)
+**마지막 업데이트**: 2026-03-23 (6차 프로덕션 코드리뷰 — 타임아웃/XSS/AbortController/보안 전면 개선)
 
 ## 현재 상태
 
-**5차 프로덕션급 전체 코드리뷰 완료.** CRITICAL 5건 + HIGH 3건 + WARNING 17건 전면 수정. 빌드/린트 모두 통과.
+**6차 프로덕션급 전체 코드리뷰 완료.** 49파일, -175/+254줄. 빌드/린트 모두 통과. **미커밋 상태.**
 
 ## 프로젝트 관계 (중요!)
 
@@ -49,13 +49,41 @@
 | Tooltip 4중 복사 제거 | `hooks/use-truncation-tooltip.ts` | ✅ |
 | LawViewer 중복 렌더링 제거 | `search-result-view/index.tsx` | ✅ |
 
-### 다음 할 일 (6차 리뷰)
+### ✅ 완료된 작업 (2026-03-23 — 6차 코드리뷰)
 
-- useUnifiedSearch에 AbortSignal 추가 (unmount 시 stale state update 방지)
-- comparison-modal 스크롤 로직 개선 (HTML 인덱스→DOM querySelector)
-- 글로벌 레이트리밋 미들웨어 (비AI 프록시 라우트용)
-- POST 엔드포인트 Content-Length/body size 일관 검증
-- law-viewer.tsx 1,000줄 → 분리 검토 (keyboard nav hook, formatSimpleJo 추출 등)
+| 카테고리 | 수정 내용 | 파일 |
+|----------|----------|------|
+| **가용성 (CRITICAL)** | fetchWithTimeout 공유 래퍼 + 33개 라우트 일괄 적용 (15초) | `lib/fetch-with-timeout.ts` + 33개 route.ts |
+| **XSS (CRITICAL)** | lawName escapeHtml + cleanPrecedentHtml 전체 태그 strip + href safeHref | modals, useUnifiedSearch, SearchResultList |
+| **스크롤 (CRITICAL)** | HTML 인덱스 비율→DOM querySelector+scrollIntoView | `comparison-modal.tsx` |
+| **DRY (CRITICAL)** | formatSimpleJo 47줄 중복→law-parser 재사용 (2줄) | `law-viewer.tsx` |
+| **보안 헤더** | proxy.ts에 X-Content-Type-Options, X-Frame-Options 등 추가 | `proxy.ts` |
+| **POST body 검증** | proxy.ts에 라우트별 Content-Length 상한 추가 | `proxy.ts` |
+| **CLI injection** | `--` argument terminator 추가 (2곳) | `anthropic-client.ts` |
+| **SSRF** | drf-html iframe src validateExternalUrl 추가 | `drf-html/route.ts` |
+| **Host injection** | article-title origin→getInternalOrigin (VERCEL_URL 우선) | `article-title/route.ts` |
+| **timing-safe** | debug/traces timingSafeEqual 적용 | `debug/traces/route.ts` |
+| **Race condition** | AbortController 3훅 추가 (three-tier, impact-analysis, comparison-modal) | 3 hooks |
+| **Toast 리스너** | useEffect deps [state]→[] (불필요한 재등록 방지) | `use-toast.ts` |
+| **Timer 누수** | tool-adapter try/finally clearTimeout | `tool-adapter.ts` |
+| **stderr 제한** | anthropic-client 10KB 상한 | `anthropic-client.ts` |
+| **console.error** | debugLogger로 통일 (3파일 5건) | precedents 관련 3 hooks |
+| **모달 상태** | comparison-modal 닫힘 시 초기화 + 중복 로깅 제거 | `comparison-modal.tsx` |
+
+### 다음 할 일 (7차 리뷰)
+
+- **law-viewer.tsx 추가 분리**: keyboard/swipe 네비 훅 추출 (~60줄), citations 병합 순수함수 추출 (~45줄), props 그룹화 훅 추출 (~60줄) → 770줄 목표
+- **search-result-view/index.tsx 캐시 복원 패턴 DRY**: 7회 반복 패턴을 헬퍼 함수로 추출
+- **any[] 타입 제거**: types.ts aiRelatedLaws, useSearchState precedentResults/interpretationResults/rulingResults
+- **gemini-engine eviction 중복**: allToolResults eviction 코드 헬퍼 추출 (DRY)
+- **use-ordinance-benchmark unmount abort**: abortRef cleanup useEffect 추가
+- **use-swipe handlers 의존성**: inline 객체→ref 패턴으로 안정화
+- **use-content-click-handlers deps 불안정**: context/actions ref 패턴
+- **useSearchState state 객체 useMemo**: 매 렌더마다 새 참조 방지
+- **search-all maxResults 바운드 체크**: Math.min(max, 100) 추가
+- **customs-search/tax-tribunal-search display/page 바운드**: 일관 클램핑
+- **annex-viewer bylNo/lsiSeq 숫자 검증**: /^\d+$/ 추가
+- **impact-analysis/relation-graph try-catch**: safeErrorResponse 적용
 
 ### 쿼리 확장 핵심 파일
 

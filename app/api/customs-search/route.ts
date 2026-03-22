@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 export interface CustomsSearchResult {
   id: string           // 법령해석일련번호
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
     if (sort) params.append("sort", sort)
 
     const url = `https://www.law.go.kr/DRF/lawSearch.do?${params.toString()}`
-    const response = await fetch(url)
+    const response = await fetchWithTimeout(url)
 
     if (!response.ok) {
       throw new Error(`API 오류: ${response.status}`)

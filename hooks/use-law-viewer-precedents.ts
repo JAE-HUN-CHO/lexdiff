@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { usePrecedents } from '@/hooks/use-precedents'
+import { debugLogger } from '@/lib/debug-logger'
 import type { LawMeta } from '@/lib/law-types'
 import type { PrecedentSearchResult, PrecedentDetail } from '@/lib/precedent-parser'
 
@@ -80,7 +81,7 @@ export function useLawViewerPrecedents(articleNumber: string, meta: LawMeta) {
         setPrecedentViewMode("side")
       }
     } catch (err) {
-      console.error("[use-law-viewer-precedents] Detail fetch error:", err)
+      debugLogger.error("[use-law-viewer-precedents] Detail fetch error:", err)
     } finally {
       setLoadingDetail(false)
     }

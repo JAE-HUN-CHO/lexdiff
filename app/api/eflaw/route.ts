@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
 import { validate, eflawRequestSchema, createErrorResponse } from "@/lib/api-validation"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 const LAW_API_BASE = "https://www.law.go.kr/DRF/lawService.do"
 const OC = process.env.LAW_OC || ""
@@ -75,7 +76,7 @@ export async function GET(request: Request) {
     const url = `${LAW_API_BASE}?${params.toString()}`
     debugLogger.info("현행법령 API 호출", { lawId, mst, efYd: efYd || "최신버전", jo: jo || "전체조문", url })
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       next: { revalidate: 3600 },
     })
 

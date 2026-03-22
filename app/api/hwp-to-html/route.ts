@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { validateExternalUrl } from "@/lib/url-validator"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 /**
  * HWP 파일을 HTML로 변환하는 API
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "허용되지 않은 URL입니다.", success: false }, { status: 400 })
     }
 
-    const response = await fetch(fullUrl)
+    const response = await fetchWithTimeout(fullUrl)
     if (!response.ok) {
       throw new Error(`HWP 파일 다운로드 실패: ${response.status}`)
     }

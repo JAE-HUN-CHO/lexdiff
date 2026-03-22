@@ -2,6 +2,13 @@ import { NextResponse } from "next/server"
 import { buildJO } from "@/lib/law-parser"
 import { debugLogger } from "@/lib/debug-logger"
 
+/** Host header injection 방지: 신뢰 가능한 내부 origin 반환 */
+function getInternalOrigin(request: Request): string {
+  // Vercel 환경에서는 VERCEL_URL 사용, 그 외 request.url에서 추출
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  return new URL(request.url).origin
+}
+
 function stripQuotes(name: string): string {
   return name.replace(/[「」『』]/g, "").trim()
 }
@@ -27,7 +34,8 @@ function extractLawsFromSearchXml(xml: string): Array<{ name: string; lawId?: st
 }
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
+  const origin = getInternalOrigin(request)
   const rawLawName = searchParams.get("lawName")
   const rawArticle = searchParams.get("article")
 

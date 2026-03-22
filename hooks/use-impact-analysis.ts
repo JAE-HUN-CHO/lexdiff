@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import type { ImpactResult } from "@/lib/relation-graph/impact-analysis"
 
 interface UseImpactAnalysisReturn {
@@ -22,9 +22,19 @@ export function useImpactAnalysis(
   const [data, setData] = useState<ImpactResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  // Unmount 시 in-flight 요청 취소
+  useEffect(() => {
+    return () => { abortRef.current?.abort() }
+  }, [])
 
   const fetchImpact = useCallback(() => {
     if (!lawId) return
+
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
 
     setIsLoading(true)
     setError(null)
@@ -32,12 +42,13 @@ export function useImpactAnalysis(
     const params = new URLSearchParams({ lawId })
     if (jo) params.append("jo", jo)
 
-    fetch(`/api/impact-analysis?${params}`)
+    fetch(`/api/impact-analysis?${params}`, { signal: controller.signal })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
       .then(json => {
+        if (controller.signal.aborted) return
         if (json.success) {
           setData(json.impact)
         } else {
@@ -45,14 +56,16 @@ export function useImpactAnalysis(
         }
       })
       .catch(e => {
+        if (e.name === 'AbortError') return
         setError(e.message || "영향 분석 중 오류 발생")
       })
       .finally(() => {
-        setIsLoading(false)
+        if (!controller.signal.aborted) setIsLoading(false)
       })
   }, [lawId, jo])
 
   const reset = useCallback(() => {
+    abortRef.current?.abort()
     setData(null)
     setError(null)
     setIsLoading(false)

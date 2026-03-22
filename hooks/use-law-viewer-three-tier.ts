@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { LawMeta, LawArticle, ThreeTierData, DelegationItem, CitationItem } from '@/lib/law-types'
 import { debugLogger } from '@/lib/debug-logger'
 
@@ -36,10 +36,18 @@ export function useLawViewerThreeTier(
     setThreeTierDelegation(null)
   }, [meta.lawTitle])
 
+  // AbortController for cancelling in-flight requests
+  const abortRef = useRef<AbortController | null>(null)
+
   // Fetch 3-tier comparison data on demand (button click only)
   const fetchThreeTierData = async () => {
     if (aiAnswerMode || isOrdinance) return
     if (!meta.lawId && !meta.mst) return
+
+    // 이전 요청 취소 (중복 클릭 방지)
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
 
     setIsLoadingThreeTier(true)
     try {
@@ -48,13 +56,14 @@ export function useLawViewerThreeTier(
       else if (meta.mst) params.append("mst", meta.mst)
 
       debugLogger.info("3단비교 데이터 조회 시작", { lawId: meta.lawId, mst: meta.mst })
-      const response = await fetch(`/api/three-tier?${params.toString()}`)
+      const response = await fetch(`/api/three-tier?${params.toString()}`, { signal: controller.signal })
       if (!response.ok) {
         debugLogger.error("3단비교 API 오류", { status: response.status })
         return
       }
 
       const data = await response.json()
+      if (controller.signal.aborted) return
       if (data.success) {
         debugLogger.success("3단비교 완료", {
           citation: data.citation?.articles?.length || 0,
@@ -64,9 +73,10 @@ export function useLawViewerThreeTier(
         setThreeTierDelegation(data.delegation)
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
       debugLogger.error("3단비교 오류", error)
     } finally {
-      setIsLoadingThreeTier(false)
+      if (!controller.signal.aborted) setIsLoadingThreeTier(false)
     }
   }
 

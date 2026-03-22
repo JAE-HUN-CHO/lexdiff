@@ -13,6 +13,7 @@ import { AI_CONFIG } from '@/lib/ai-config'
 import { safeErrorResponse } from '@/lib/api-error'
 import { getClientIP } from '@/lib/get-client-ip'
 import { isQuotaExceeded, recordAIUsage, getUsageHeaders } from '@/lib/usage-tracker'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 // ── 조례 본문 조회 ──
 
@@ -20,7 +21,7 @@ async function fetchOrdinanceText(ordinanceSeq: string): Promise<string> {
   try {
     const OC = process.env.LAW_OC || ''
     const url = `https://www.law.go.kr/DRF/lawService.do?OC=${OC}&target=ordin&MST=${ordinanceSeq}&type=JSON`
-    const res = await fetch(url, { next: { revalidate: 86400 } })
+    const res = await fetchWithTimeout(url, { next: { revalidate: 86400 } })
     if (!res.ok) return ''
     const data = await res.json()
 

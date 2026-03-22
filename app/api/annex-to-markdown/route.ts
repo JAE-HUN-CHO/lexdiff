@@ -6,6 +6,7 @@ import { getUsageHeaders, isQuotaExceeded, recordAITokens, recordAIUsage } from 
 import { validateExternalUrl } from "@/lib/url-validator"
 import { AI_CONFIG } from "@/lib/ai-config"
 import { getClientIP } from "@/lib/get-client-ip"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 function getBaseUrl(request: Request): string {
   const url = new URL(request.url)
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
 
     debugLogger.info("Annex conversion requested", { annexNumber, lawName, fullPdfUrl })
 
-    const fileResponse = await fetch(fullPdfUrl)
+    const fileResponse = await fetchWithTimeout(fullPdfUrl)
     if (!fileResponse.ok) {
       throw new Error(`파일 다운로드 실패: ${fileResponse.status}`)
     }

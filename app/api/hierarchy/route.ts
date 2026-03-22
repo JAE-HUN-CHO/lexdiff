@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 const LAW_API_KEY = process.env.LAW_OC
 
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
       const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?${searchParams.toString()}`
       debugLogger.debug("[hierarchy API] Searching for law:", searchUrl)
 
-      const searchResponse = await fetch(searchUrl, {
+      const searchResponse = await fetchWithTimeout(searchUrl, {
         headers: {
           "User-Agent": "Mozilla/5.0 (compatible; LexDiff/1.0)",
         },
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
     const url = `https://www.law.go.kr/DRF/lawService.do?${params.toString()}`
     debugLogger.debug("[hierarchy API] Fetching hierarchy:", url)
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; LexDiff/1.0)",
       },

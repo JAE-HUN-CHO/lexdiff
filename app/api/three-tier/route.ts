@@ -4,6 +4,7 @@ import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
 import { extractRelationsFromThreeTier } from "@/lib/relation-graph/extractors/three-tier-extractor"
 import { storeRelationsAsync } from "@/lib/relation-graph/relation-db"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 const LAW_API_BASE = "https://www.law.go.kr/DRF/lawService.do"
 const OC = process.env.LAW_OC || ""
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
     debugLogger.info("위임조문 API 요청")
 
     // 2MB 캐시 한계 회피: Next.js data cache 비활성화, HTTP 캐싱만 사용
-    const delegationResponse = await fetch(delegationUrl, {
+    const delegationResponse = await fetchWithTimeout(delegationUrl, {
       cache: "no-store" // Next.js data cache 비활성화 (2MB 한계 회피)
     })
 

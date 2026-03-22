@@ -179,7 +179,8 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- setState는 안정적 참조, state 변경 시 재등록 불필요
+  }, [])
 
   return {
     ...state,

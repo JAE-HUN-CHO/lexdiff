@@ -19,6 +19,16 @@ import { generatePageNumbers } from "@/lib/pagination-utils"
 import { getLawTypeBadgeClass } from "./utils"
 import type { LawSearchResult, OrdinanceSearchResult, RelatedSearch, SearchQuery, InterpretationSearchResult, RulingSearchResult } from "./types"
 
+/** href에 javascript:/data: 프로토콜 주입 방지 */
+function safeHref(url: string | undefined | null): string | undefined {
+  if (!url) return undefined
+  try {
+    const parsed = new URL(url, 'https://placeholder.invalid')
+    if (['http:', 'https:'].includes(parsed.protocol)) return url
+  } catch { /* invalid URL */ }
+  return undefined
+}
+
 // ============================================================
 // 법령 검색 결과 리스트
 // ============================================================
@@ -518,7 +528,7 @@ export const InterpretationResultList = memo(function InterpretationResultList({
         {results.map((item, index) => (
           <a
             key={item.id || index}
-            href={item.link || undefined}
+            href={safeHref(item.link)}
             target="_blank"
             rel="noopener noreferrer"
             className="block p-4 bg-card/50 border-2 border-border/50 rounded-xl hover:border-primary/40 hover:bg-card/70 transition-all duration-200 animate-fade-in"
@@ -581,7 +591,7 @@ export const RulingResultList = memo(function RulingResultList({
         {results.map((item, index) => (
           <a
             key={item.id || index}
-            href={item.link || undefined}
+            href={safeHref(item.link)}
             target="_blank"
             rel="noopener noreferrer"
             className="block p-4 bg-card/50 border-2 border-border/50 rounded-xl hover:border-primary/40 hover:bg-card/70 transition-all duration-200 animate-fade-in"

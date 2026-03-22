@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
 import { parsePrecedentDetailJSON, type PrecedentDetail } from "@/lib/precedent-parser"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     const url = `https://www.law.go.kr/DRF/lawService.do?${params.toString()}`
-    const response = await fetch(url)
+    const response = await fetchWithTimeout(url)
 
     if (!response.ok) {
       throw new Error(`API 오류: ${response.status}`)

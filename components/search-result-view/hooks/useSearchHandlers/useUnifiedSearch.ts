@@ -71,6 +71,7 @@ function cleanPrecedentHtml(text: string): string {
   return text
     .replace(/<br\\>/g, "\n")
     .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]*>/g, "") // 모든 HTML 태그 strip (XSS 방지)
     .replace(/&nbsp;/g, " ")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")

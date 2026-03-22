@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { safeErrorResponse } from "@/lib/api-error"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 /**
  * 별표 파일 프록시 API
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     const fileUrl = `https://www.law.go.kr/LSW/flDownload.do?flSeq=${flSeq}`
     debugLogger.info("별표 파일 다운로드", { flSeq, fileUrl })
 
-    const response = await fetch(fileUrl, {
+    const response = await fetchWithTimeout(fileUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         Accept: "*/*",
