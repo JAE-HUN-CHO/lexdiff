@@ -45,8 +45,8 @@ function parseArticleComponents(input: string): ArticleComponents {
   const match = sanitized.match(/(\d+)(?:조)?(?:(?:의|-)\s*(\d+))?/u)
 
   if (!match) {
-    debugLogger.error("조문 숫자 추출 실패", { input, sanitized })
-    throw new Error(`조문 패턴을 인식할 수 없습니다: ${input}`)
+    debugLogger.debug("조문 숫자 없음 (비조문 입력)", { input, sanitized })
+    return { articleNumber: 0, branchNumber: 0 }
   }
 
   const articleNumber = Number.parseInt(match[1], 10)
