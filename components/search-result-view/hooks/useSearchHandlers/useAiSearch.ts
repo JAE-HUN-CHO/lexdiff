@@ -14,14 +14,13 @@ import type { ToolCallLogEntry } from "../../types"
 
 type AiQueryType = 'definition' | 'requirement' | 'procedure' | 'comparison' | 'application' | 'consequence' | 'scope' | 'exemption'
 
-let logIdCounter = 0
-
 export function useAiSearch(deps: HandlerDeps) {
   const { state, actions, toast } = deps
   const abortRef = useRef<AbortController | null>(null)
   const streamBufferRef = useRef<string>('')  // 스트리밍 토큰 누적 버퍼
   const answerReceivedRef = useRef(false)  // answer 이벤트 수신 여부
   const answerTokenStartedRef = useRef(false)  // 첫 answer_token 수신 여부
+  const logIdCounterRef = useRef(0)  // React concurrent/StrictMode 안전한 카운터
 
   /** 현재 답변을 대화 히스토리에 저장 */
   const saveCurrentToHistory = useCallback(() => {
@@ -313,7 +312,7 @@ export function useAiSearch(deps: HandlerDeps) {
           // status는 타임라인 단독 단계로는 안 쓰이지만,
           // 진행 중인 도구 단계 아래 하위 텍스트로 표시됨 (lastStatusMessage)
           actions.addToolCallLog({
-            id: `log-${++logIdCounter}`,
+            id: `log-${++logIdCounterRef.current}`,
             type: 'status',
             displayName: event.message,
             message: event.message,
@@ -323,7 +322,7 @@ export function useAiSearch(deps: HandlerDeps) {
         }
         case 'tool_call': {
           actions.addToolCallLog({
-            id: `log-${++logIdCounter}`,
+            id: `log-${++logIdCounterRef.current}`,
             type: 'call',
             name: event.name,
             displayName: event.displayName,
@@ -334,7 +333,7 @@ export function useAiSearch(deps: HandlerDeps) {
         }
         case 'tool_result': {
           actions.addToolCallLog({
-            id: `log-${++logIdCounter}`,
+            id: `log-${++logIdCounterRef.current}`,
             type: 'result',
             name: event.name,
             displayName: event.displayName,
@@ -346,7 +345,7 @@ export function useAiSearch(deps: HandlerDeps) {
         }
         case 'token_usage': {
           actions.addToolCallLog({
-            id: `log-${++logIdCounter}`,
+            id: `log-${++logIdCounterRef.current}`,
             type: 'token_usage',
             displayName: `토큰(누적): ${event.inputTokens?.toLocaleString()} in / ${event.outputTokens?.toLocaleString()} out`,
             timestamp: Date.now(),
@@ -364,7 +363,7 @@ export function useAiSearch(deps: HandlerDeps) {
             if (!answerTokenStartedRef.current) {
               answerTokenStartedRef.current = true
               actions.addToolCallLog({
-                id: `log-${++logIdCounter}`,
+                id: `log-${++logIdCounterRef.current}`,
                 type: 'call',
                 name: 'generate_answer',
                 displayName: '답변 생성',
@@ -414,7 +413,7 @@ export function useAiSearch(deps: HandlerDeps) {
           // "답변 생성" 단계 완료 마킹
           if (answerTokenStartedRef.current) {
             actions.addToolCallLog({
-              id: `log-${++logIdCounter}`,
+              id: `log-${++logIdCounterRef.current}`,
               type: 'result',
               name: 'generate_answer',
               displayName: '답변 생성',
@@ -439,7 +438,7 @@ export function useAiSearch(deps: HandlerDeps) {
             persistVerifiedCitations(query, event.citations)
             // 검증 완료 로그 추가
             actions.addToolCallLog({
-              id: `log-${++logIdCounter}`,
+              id: `log-${++logIdCounterRef.current}`,
               type: 'result',
               name: 'citation_verification',
               displayName: `인용 검증 완료 (${verifiedCount}/${event.citations.length})`,
@@ -455,7 +454,7 @@ export function useAiSearch(deps: HandlerDeps) {
         }
         case 'source': {
           actions.addToolCallLog({
-            id: `log-${++logIdCounter}`,
+            id: `log-${++logIdCounterRef.current}`,
             type: 'source',
             displayName: event.source === 'claude' ? 'Claude' : event.source === 'openclaw' ? 'Claude (Bridge)' : 'Gemini',
             message: event.source,
@@ -466,7 +465,7 @@ export function useAiSearch(deps: HandlerDeps) {
         case 'error': {
           debugLogger.error('FC-RAG 서버 오류', event.message)
           actions.addToolCallLog({
-            id: `log-${++logIdCounter}`,
+            id: `log-${++logIdCounterRef.current}`,
             type: 'status',
             displayName: `오류: ${event.message}`,
             message: event.message,

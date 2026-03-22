@@ -53,8 +53,11 @@ export async function executeRAG(
       if (event.type === 'answer') return event.data
       if (event.type === 'error') throw new Error(event.message)
     }
-  } catch {
-    // Claude 실패 → Gemini fallback
+  } catch (err: unknown) {
+    // Claude 실패 → Gemini fallback (에러 원인 기록)
+    const { debugLogger } = await import('../debug-logger')
+    const msg = err instanceof Error ? err.message : String(err)
+    debugLogger.warning(`[engine] Claude failed, falling back to Gemini: ${msg}`)
   }
   for await (const event of executeGeminiRAGStream(query, { apiKey: geminiApiKey })) {
     if (event.type === 'answer') return event.data

@@ -10,6 +10,7 @@ import { parseOldNewXML, highlightDifferences } from "@/lib/oldnew-parser"
 import { parseArticleHistoryXML, formatDate } from "@/lib/revision-parser"
 import type { RevisionHistoryItem } from "@/lib/law-types"
 import { debugLogger } from "@/lib/debug-logger"
+import { sanitizeForRender } from "@/lib/sanitize-html-render"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ComparisonModalProps {
@@ -524,7 +525,7 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
                     <div
                       className="leading-relaxed max-w-none text-foreground"
                       style={{ fontSize: `${fontSize}px`, fontFamily: 'Pretendard, sans-serif' }}
-                      dangerouslySetInnerHTML={{ __html: oldHighlighted || "구법 내용이 없습니다." }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeForRender(oldHighlighted || "구법 내용이 없습니다.") }}
                     />
                   </div>
                 </div>
@@ -547,7 +548,7 @@ export const ComparisonModal = memo(function ComparisonModal({ isOpen, onClose, 
                     <div
                       className="leading-relaxed max-w-none text-foreground"
                       style={{ fontSize: `${fontSize}px`, fontFamily: 'Pretendard, sans-serif' }}
-                      dangerouslySetInnerHTML={{ __html: newHighlighted || "신법 내용이 없습니다." }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeForRender(newHighlighted || "신법 내용이 없습니다.") }}
                     />
                   </div>
                 </div>

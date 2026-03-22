@@ -93,20 +93,26 @@ export const CACHE_TTL: Record<string, number> = {
 const CACHE_MAX_SIZE = 2000
 
 export function evictOldest() {
-  if (apiCache.size <= CACHE_MAX_SIZE) return
-  let oldestKey: string | null = null
-  let oldestExpiry = Infinity
-  for (const [key, entry] of apiCache) {
-    if (entry.expiry < oldestExpiry) {
-      oldestExpiry = entry.expiry
-      oldestKey = key
+  while (apiCache.size > CACHE_MAX_SIZE) {
+    let oldestKey: string | null = null
+    let oldestExpiry = Infinity
+    for (const [key, entry] of apiCache) {
+      if (entry.expiry < oldestExpiry) {
+        oldestExpiry = entry.expiry
+        oldestKey = key
+      }
     }
+    if (!oldestKey) break
+    apiCache.delete(oldestKey)
   }
-  if (oldestKey) apiCache.delete(oldestKey)
 }
 
-export function stableStringify(obj: Record<string, unknown>): string {
-  return JSON.stringify(obj, Object.keys(obj).sort())
+/** 중첩 객체까지 키 순서를 안정적으로 직렬화 */
+export function stableStringify(obj: unknown): string {
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj)
+  if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']'
+  const sorted = Object.keys(obj as Record<string, unknown>).sort()
+  return '{' + sorted.map(k => JSON.stringify(k) + ':' + stableStringify((obj as Record<string, unknown>)[k])).join(',') + '}'
 }
 
 // ─── 결과 절삭/압축 ───

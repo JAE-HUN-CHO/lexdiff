@@ -163,16 +163,10 @@ export function detectFastPath(query: string): FastPathDetection {
     return { type: 'term_search', searchQuery: termMatch[1].trim(), toolName: 'search_legal_terms' }
   }
 
-  // ── 패턴 6: 법체계 ("XX법 시행령", "XX법 시행규칙") ──
-  const lawSystemMatch = query.match(/^(.+?법)\s*(?:시행령|시행규칙|하위법령|법체계)[\s?]*$/)
+  // ── 패턴 6: 법체계/위임법령 조회 ──
+  const lawSystemMatch = query.match(/^(.+?법)\s*(?:시행령|시행규칙|하위법령|법체계|위임법령|3단비교)[\s?]*$/)
   if (lawSystemMatch && !/비교|개정|판례/.test(query)) {
     return { type: 'law_system', lawName: lawSystemMatch[1].trim(), searchQuery: lawSystemMatch[1].trim(), toolName: 'chain_law_system' }
-  }
-
-  // ── 패턴 7: 법체계 조회 ("XX법 위임법령", "XX법 3단비교") ──
-  const threeTierMatch = query.match(/^(.+?법)\s*(?:위임법령|3단비교|하위법령|법체계|시행령)[\s?]*$/)
-  if (threeTierMatch && !/비교|개정|판례/.test(query)) {
-    return { type: 'law_system', lawName: threeTierMatch[1].trim(), searchQuery: threeTierMatch[1].trim(), toolName: 'chain_law_system' }
   }
 
   // ── 패턴 8: 법명+조문번호 ──

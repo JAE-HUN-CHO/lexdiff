@@ -38,9 +38,12 @@ export async function POST(request: NextRequest) {
   }
 
   // 입력 검증
-  if (!Array.isArray(lawNames) || lawNames.length === 0 || lawNames.length > 5) {
+  if (
+    !Array.isArray(lawNames) || lawNames.length === 0 || lawNames.length > 5 ||
+    !lawNames.every((n: unknown) => typeof n === 'string' && n.length > 0 && n.length < 200)
+  ) {
     return Response.json(
-      { error: '법령명은 1~5개까지 입력 가능합니다.' },
+      { error: '법령명은 1~5개 문자열(200자 이내)만 허용됩니다.' },
       { status: 400 },
     )
   }
@@ -64,7 +67,12 @@ export async function POST(request: NextRequest) {
   const userApiKey = request.headers.get('X-User-API-Key') || undefined
   const encoder = new TextEncoder()
 
+  const abortController = new AbortController()
+
   const stream = new ReadableStream({
+    cancel() {
+      abortController.abort()
+    },
     async start(controller) {
       let usageRecorded = false
       const send = (data: unknown) => {
@@ -74,7 +82,7 @@ export async function POST(request: NextRequest) {
       try {
         for await (const event of executeImpactAnalysis(
           { lawNames, dateFrom, dateTo, mode, region },
-          { signal: request.signal, apiKey: userApiKey },
+          { signal: AbortSignal.any([request.signal, abortController.signal]), apiKey: userApiKey },
         )) {
           // 첫 번째 의미 있는 이벤트 수신 시 사용량 기록
           if (!usageRecorded && (event as { type?: string }).type !== 'error') {

@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/icon"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
+import { sanitizeForRender } from "@/lib/sanitize-html-render"
 import type { LawMeta, LawArticle } from "@/lib/law-types"
 import { parseLawJSON } from "@/lib/law-json-parser"
 import { highlightDifferences } from "@/lib/oldnew-parser"
@@ -436,7 +437,7 @@ export const TimeMachineModal = memo(function TimeMachineModal({
                     <div
                       className="leading-relaxed max-w-none text-foreground whitespace-pre-wrap"
                       style={{ fontSize: `${fontSize}px`, fontFamily: 'Pretendard, sans-serif' }}
-                      dangerouslySetInnerHTML={{ __html: oldHighlighted || pastText || "내용 없음" }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeForRender(oldHighlighted || pastText || "내용 없음") }}
                     />
                   </div>
                 </div>
@@ -460,7 +461,7 @@ export const TimeMachineModal = memo(function TimeMachineModal({
                     <div
                       className="leading-relaxed max-w-none text-foreground whitespace-pre-wrap"
                       style={{ fontSize: `${fontSize}px`, fontFamily: 'Pretendard, sans-serif' }}
-                      dangerouslySetInnerHTML={{ __html: newHighlighted || currentText || "내용 없음" }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeForRender(newHighlighted || currentText || "내용 없음") }}
                     />
                   </div>
                 </div>

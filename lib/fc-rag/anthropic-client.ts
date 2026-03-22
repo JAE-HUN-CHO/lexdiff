@@ -20,24 +20,46 @@ export const CLAUDE_MODEL = 'claude-sonnet-4-6'
 const CLAUDE_BIN = process.env.CLAUDE_CLI_PATH || 'claude'
 
 // korean-law MCP만 로드하는 전용 설정 (context7, sequential-thinking 등 불필요 서버 차단)
-const MCP_CONFIG_PATH = join(process.cwd(), 'lib/fc-rag/claude-mcp-config.json')
+const MCP_CONFIG_PATH = join(process.cwd(), 'lib', 'fc-rag', 'claude-mcp-config.json')
 
-/**
- * ~/.claude/.credentials.json에서 OAuth accessToken 추출.
- * --bare 모드에서는 keychain/OAuth 자동인증이 스킵되므로
- * ANTHROPIC_API_KEY env로 직접 주입 필요.
- */
+// ── OAuth 토큰 캐시 (readFileSync 매 요청 방지) ──
+let _cachedOAuthToken: string | null = null
+let _tokenCachedAt = 0
+const TOKEN_CACHE_TTL = 60_000 // 1분
+
 function getOAuthToken(): string {
+  const now = Date.now()
+  if (_cachedOAuthToken && now - _tokenCachedAt < TOKEN_CACHE_TTL) {
+    return _cachedOAuthToken
+  }
   try {
     const credPath = join(homedir(), '.claude', '.credentials.json')
     const creds = JSON.parse(readFileSync(credPath, 'utf8'))
     const token = creds?.claudeAiOauth?.accessToken
     if (!token) throw new Error('accessToken 없음')
+    _cachedOAuthToken = token
+    _tokenCachedAt = now
     return token
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     throw new Error(`OAuth 토큰 읽기 실패 (${msg}) — claude setup-token으로 갱신 필요`)
   }
+}
+
+// ── 자식 프로세스 환경변수 화이트리스트 (불필요한 시크릿 전달 방지) ──
+const SUBPROCESS_ENV_WHITELIST = [
+  'PATH', 'HOME', 'USERPROFILE', 'TEMP', 'TMP', 'TMPDIR',
+  'SystemRoot', 'PATHEXT', 'APPDATA', 'LOCALAPPDATA',
+  'NODE_PATH', 'NODE_ENV', 'LANG', 'LC_ALL',
+]
+
+function getSubprocessEnv(extraVars?: Record<string, string>): NodeJS.ProcessEnv {
+  const env: Record<string, string | undefined> = {}
+  for (const key of SUBPROCESS_ENV_WHITELIST) {
+    if (process.env[key]) env[key] = process.env[key]
+  }
+  if (extraVars) Object.assign(env, extraVars)
+  return env as NodeJS.ProcessEnv
 }
 
 export interface DirectMessage {
@@ -83,8 +105,7 @@ export async function callAnthropic(
     prompt,
   ]
 
-  const env = { ...process.env }
-  env.ANTHROPIC_API_KEY = getOAuthToken()
+  const env = getSubprocessEnv({ ANTHROPIC_API_KEY: getOAuthToken() })
 
   debugLogger.debug(`[claude-cli] calling ${CLAUDE_MODEL}, prompt: ${prompt.length} chars, system: ${systemPrompt.length} chars`)
 
@@ -100,7 +121,6 @@ export async function callAnthropic(
           reject(new Error(`Claude CLI exit: ${stderr?.substring(0, 300) || err.message}`))
         } else {
           if (err) {
-            // 비정상 종료이지만 부분 stdout 존재 — 경고 후 복구 시도
             const code = (err as NodeJS.ErrnoException).code || 'unknown'
             debugLogger.warning(`[claude-cli] non-zero exit (${code}) but got partial stdout (${stdout?.length ?? 0} chars), attempting recovery`)
           }
@@ -109,7 +129,9 @@ export async function callAnthropic(
       })
 
       if (signal) {
-        signal.addEventListener('abort', () => { proc.kill(); reject(new Error('aborted')) }, { once: true })
+        const onAbort = () => { proc.kill(); reject(new Error('aborted')) }
+        signal.addEventListener('abort', onAbort, { once: true })
+        proc.on('exit', () => signal.removeEventListener('abort', onAbort))
       }
     })
 
@@ -214,8 +236,7 @@ export async function* callAnthropicStream(
     prompt,
   ]
 
-  const env = { ...process.env }
-  env.ANTHROPIC_API_KEY = getOAuthToken()
+  const env = getSubprocessEnv({ ANTHROPIC_API_KEY: getOAuthToken() })
 
   debugLogger.debug(`[claude-cli] streaming ${CLAUDE_MODEL}, prompt: ${prompt.length} chars`)
 
@@ -246,6 +267,9 @@ export async function* callAnthropicStream(
   let prevTextLen = 0  // --include-partial-messages: snapshot→delta 변환용
 
   const rl = createInterface({ input: proc.stdout! })
+
+  // try/finally로 generator 조기 종료 시에도 프로세스 정리 보장
+  try {
 
   for await (const line of rl) {
     if (!line.trim()) continue
@@ -326,6 +350,13 @@ export async function* callAnthropicStream(
   const exitCode = await exitPromise
   if (exitCode !== 0 && !finalText) {
     throw new Error(`Claude CLI exit code ${exitCode}: ${stderrText.slice(0, 300)}`)
+  }
+
+  } finally {
+    // Generator 조기 종료(consumer break/return) 시에도 zombie 프로세스 방지
+    if (!proc.killed) {
+      proc.kill()
+    }
   }
 }
 

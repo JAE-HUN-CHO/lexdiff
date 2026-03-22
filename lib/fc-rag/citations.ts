@@ -28,6 +28,8 @@ function extractContextualArticles(text: string): Set<string> {
 /**
  * 도구 결과에서 Citation 구성 (답변 텍스트 기반 필터링)
  */
+const MAX_CITATIONS = 50 // 메모리/SSE 대역폭 보호
+
 export function buildCitations(toolResults: ToolCallResult[], answerText?: string): FCRAGCitation[] {
   const citations: FCRAGCitation[] = []
   const seen = new Set<string>()
@@ -38,6 +40,7 @@ export function buildCitations(toolResults: ToolCallResult[], answerText?: strin
 
   for (const result of toolResults) {
     if (result.isError) continue
+    if (citations.length >= MAX_CITATIONS) break
 
     const text = result.result
 

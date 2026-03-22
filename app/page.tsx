@@ -111,7 +111,7 @@ export default function Home() {
   useEffect(() => {
     // 만료된 검색 결과 삭제
     deleteExpiredResults().catch(err => {
-      console.error('Failed to delete expired results:', err)
+      debugLogger.error('Failed to delete expired results:', err)
     })
 
     // History API 초기화

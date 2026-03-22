@@ -446,10 +446,22 @@ export async function* executeGeminiRAGStream(
 
       allToolResults.push(...results)
 
-      // 메모리 누수 방지
+      // 메모리 누수 방지 (에러 → 최단 → 최오래된 순서로 퇴거, 첫 결과(pre-evidence) 보호)
       while (allToolResults.length > MAX_TOOL_RESULTS) {
         const errIdx = allToolResults.findIndex(r => r.isError)
-        allToolResults.splice(errIdx >= 0 ? errIdx : 0, 1)
+        if (errIdx >= 0) {
+          allToolResults.splice(errIdx, 1)
+        } else {
+          let minIdx = 1 // index 0 (첫 결과) 보호
+          let minLen = allToolResults[1]?.result.length ?? Infinity
+          for (let i = 2; i < allToolResults.length; i++) {
+            if (allToolResults[i].result.length < minLen) {
+              minLen = allToolResults[i].result.length
+              minIdx = i
+            }
+          }
+          allToolResults.splice(minIdx, 1)
+        }
       }
 
       currentProgress = Math.min(8 + ((turnCount + 0.5) * progressPerTurn), 85)
@@ -509,6 +521,12 @@ export async function* executeGeminiRAGStream(
             summary: summarizeToolResult(autoResult.name, autoResult),
           }
           results.push(autoResult)
+        }
+
+        // Auto-chain 결과 추가 후에도 MAX_TOOL_RESULTS 가드 적용
+        while (allToolResults.length > MAX_TOOL_RESULTS) {
+          const errIdx = allToolResults.findIndex(r => r.isError)
+          allToolResults.splice(errIdx >= 0 ? errIdx : 0, 1)
         }
       }
 

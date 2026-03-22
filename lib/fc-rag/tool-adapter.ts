@@ -135,7 +135,16 @@ export async function executeTool(
       return { name, result: '요청이 취소되었습니다.', isError: true }
     }
     const parsedArgs = tool.schema.parse(args)
-    const response = await tool.handler(apiClient, parsedArgs)
+
+    // 개별 도구 타임아웃 (법제처 API hang 방지)
+    const TOOL_TIMEOUT_MS = 30_000
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`도구 타임아웃 (${TOOL_TIMEOUT_MS}ms): ${name}`)), TOOL_TIMEOUT_MS),
+    )
+    const response = await Promise.race([
+      tool.handler(apiClient, parsedArgs),
+      timeoutPromise,
+    ])
     const text = response.content.map(c => c.text).join('\n')
     const truncated = truncateForContext(text, name)
     const result: ToolCallResult = {

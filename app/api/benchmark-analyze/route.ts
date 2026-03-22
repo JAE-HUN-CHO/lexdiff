@@ -11,6 +11,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { AI_CONFIG } from '@/lib/ai-config'
 import { safeErrorResponse } from '@/lib/api-error'
+import { getClientIP } from '@/lib/get-client-ip'
+import { isQuotaExceeded, recordAIUsage, getUsageHeaders } from '@/lib/usage-tracker'
 
 // ── 조례 본문 조회 ──
 
@@ -102,6 +104,15 @@ async function callGemini(prompt: string): Promise<string> {
 // ── 메인 핸들러 ──
 
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const clientIP = getClientIP(request)
+  if (await isQuotaExceeded(clientIP)) {
+    return NextResponse.json(
+      { error: '일일 AI 사용량 초과. 내일 다시 시도해주세요.' },
+      { status: 429, headers: await getUsageHeaders(clientIP) },
+    )
+  }
+
   let keyword: string
   let focus: string | undefined
   let ordinances: Array<{ orgShortName: string; orgName?: string; ordinanceName: string; ordinanceSeq: string }>
@@ -117,6 +128,11 @@ export async function POST(request: NextRequest) {
 
   if (!keyword || !ordinances?.length || ordinances.length < 2) {
     return NextResponse.json({ error: '비교할 조례가 2개 이상 필요합니다.' }, { status: 400 })
+  }
+
+  // ordinanceSeq 숫자 검증
+  if (ordinances.some(o => !/^\d+$/.test(o.ordinanceSeq))) {
+    return NextResponse.json({ error: 'ordinanceSeq는 숫자만 허용됩니다.' }, { status: 400 })
   }
 
   // 조례 본문 병렬 조회 (상위 8개)
@@ -139,8 +155,9 @@ export async function POST(request: NextRequest) {
   const prompt = buildPrompt(keyword, validTexts, focus)
 
   try {
+    await recordAIUsage(clientIP)
     const geminiAnswer = await callGemini(prompt)
-    return NextResponse.json(parseAnalysisResponse(geminiAnswer))
+    return NextResponse.json(parseAnalysisResponse(geminiAnswer), { headers: await getUsageHeaders(clientIP) })
   } catch (err: unknown) {
     return safeErrorResponse(err, "AI 분석 실패")
   }

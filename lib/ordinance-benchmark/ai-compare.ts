@@ -95,7 +95,7 @@ export async function analyzeOrdinances(
   }
 
   // Gemini 호출
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
     return {
       comparisonTable: 'API 키가 설정되지 않았습니다.',

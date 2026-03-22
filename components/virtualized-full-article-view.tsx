@@ -27,7 +27,7 @@ const ArticleContent = React.memo(function ArticleContent({
     () => extractArticleText(article, false, lawTitle),
     [article.jo, article.content, lawTitle]
   )
-  return <div onClick={onContentClick} dangerouslySetInnerHTML={{ __html: html }} />
+  return <div onClick={onContentClick} dangerouslySetInnerHTML={{ __html: sanitizeForRender(html) }} />
 })
 
 interface VirtualizedFullArticleViewProps {
