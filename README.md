@@ -1,359 +1,111 @@
 # LexDiff
 
-### 한국 법령 · 조례 · 판례 통합 분석 플랫폼
+**Korean law search, comparison, and AI analysis platform**
+— 한국 법령 검색 · 신구조문 비교 · AI 법률 분석 올인원 플랫폼
 
-국가법령부터 지방자치단체 조례까지, 신·구법 대조, 위임법령 3단 비교, AI 자연어 검색, 판례·해석례 통합 검색을 한 곳에서.
-**관세사·세무사·변호사·공무원을 위한 올인원 법령 분석 도구**
+<p align="center">
+  <img src="demo/out/lexdiff-demo.gif" alt="LexDiff Demo" width="720" />
+</p>
+
+<p align="center">
+  <a href="https://lexdiff.vercel.app">lexdiff.vercel.app</a>
+</p>
 
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react)
 ![TypeScript 5](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
-![Gemini 2.5 Flash](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?logo=google)
+![Claude Sonnet 4.6](https://img.shields.io/badge/Claude-Sonnet_4.6-cc785c?logo=anthropic)
 ![667 Tests](https://img.shields.io/badge/Tests-667-green)
-![73 API Endpoints](https://img.shields.io/badge/APIs-73-blue)
 
 ---
 
-## 🎯 LexDiff가 해결하는 문제
+## What it does
 
-### 🏛️ 공무원·지자체 담당자
-| 기존 방식 | LexDiff |
-|-----------|---------|
-| 국가법령정보센터 + 자치법규정보시스템 따로 검색 | **국가법령 + 조례/규칙 통합 검색** |
-| 상위법령-조례 관계 파악에 시간 소모 | **법률 → 시행령 → 조례 위임 관계 3단 비교** |
-| 조례 개정 시 상위법 변경사항 일일이 확인 | **신·구법 대조 + AI 변경 요약** |
-| 유사 조례 검색은 각 지자체별 수동 확인 | **전국 자치법규 키워드 검색** |
+일상 언어로 법률을 질문하면 AI가 법령·판례를 근거로 답합니다.
 
-### 📦 관세사·무역 전문가
-| 기존 방식 | LexDiff |
-|-----------|---------|
-| 관세법-시행령-시행규칙 탭 왔다갔다 | **3단 위임법령 비교로 한 화면에** |
-| "HS코드 분류 기준이 뭐지?" → 조문 하나씩 읽기 | **AI가 자연어 답변 + 근거 조문 자동 인용** |
-| 관세청 법령해석 별도 검색 | **법령 뷰어에서 관세청 해석례 바로 확인** |
-| FTA 특혜관세 요건 확인에 여러 고시 참조 | **조문별 관련 행정규칙(고시/훈령) 자동 연결** |
-
-### ⚖️ 세무사·변호사
-| 기존 방식 | LexDiff |
-|-----------|---------|
-| 세법 개정 영향 분석에 신·구법 PDF 비교 | **실시간 변경점 하이라이팅 + AI 요약** |
-| 판례·심판례 별도 사이트 검색 | **조세심판원 재결례 + 대법원 판례 통합** |
-| 법령해석례 찾기 어려움 | **법제처 해석례 검색 + 조문 연동** |
+| Feature | Description |
+|---------|-------------|
+| **AI 법률 검색** | 자연어 질문 → Claude Sonnet 4.6 + MCP 도구로 법령·판례 기반 실시간 답변 |
+| **신구조문 비교** | 개정 전후 변경점 하이라이팅 + AI 변경 요약 |
+| **3단 위임법령 비교** | 법률 → 시행령 → 시행규칙 한 화면에 |
+| **판례·해석례 통합** | 대법원 판례, 법제처 해석례, 조세심판원 재결례, 관세청 해석 |
+| **자치법규 검색** | 전국 17개 시도 + 226개 시군구 조례/규칙 통합 |
+| **위임법령 추적** | 조문별 행정규칙(고시/훈령) 자동 연결 |
+| **구법령 조회** | 과거 시점 법령 원문 + 개정 이력 |
 
 ---
 
-## ✨ 핵심 기능
+## Who it's for
 
-### 🔍 AI 자연어 검색
-> "청년 창업 지원 요건은?" → AI가 관련 법령을 분석해 즉시 답변
-
-- **Google Gemini 2.5 Flash + File Search RAG** 기반
-- 실시간 스트리밍 답변 (타이핑 효과)
-- **모든 인용 출처를 클릭 가능한 링크로 변환** — 클릭하면 해당 조문 모달
-- 2-Tier 라우팅: 질문 유형(정의/요건/절차/비교)별 최적화된 AI 프롬프트
-
-### ⚖️ 3단 위임법령 비교
-> 법률 → 시행령 → 시행규칙의 위임 관계를 한눈에
-
-- **1단 뷰**: 법률 본문
-- **2단 뷰**: 법률 + 시행령 좌우 비교
-- **3단 뷰**: 법률 + 시행령 + 시행규칙 3열 비교
-- 각 열 독립 스크롤, 위임 조문 자동 하이라이팅
-
-### 📋 신·구법 대조
-> 개정 전후를 한눈에 비교
-
-- 변경사항 컬러 하이라이팅 (추가/삭제/수정)
-- AI 변경 요약: 핵심 변경점 3-5개 자동 추출
-- 시행일·공포일·제개정구분 메타데이터 표시
-
-### 📚 판례·해석례 통합 검색
-> 조문을 보면서 관련 판례를 바로 확인
-
-- **대법원/하급심 판례** — 판시사항·요지·전문 조회
-- **법령해석례** — 법제처 해석 사례
-- **조세심판원 재결례** — 조세 분쟁 재결
-- **관세청 법령해석** — 관세 분야 해석 사례
-- 법령 뷰어 하단에 관련 판례 자동 표시
-
-### 📑 행정규칙 연동
-> "이 조문 관련 고시·훈령 뭐가 있지?"
-
-- 조문별 관련 행정규칙(훈령/예규/고시) 자동 검색
-- Optimistic UI: 캐시 데이터 즉시 표시 + 백그라운드 갱신
-
-### 🏘️ 자치법규 (조례/규칙) 검색
-> 전국 지방자치단체의 조례와 규칙을 한 곳에서
-
-- **17개 시·도 + 226개 시·군·구** 자치법규 통합 검색
-- 조례 본문 조회 및 조문별 탐색
-- 국가법령과 동일한 UI/UX로 일관된 사용 경험
-- 상위법령(법률/시행령) → 조례 위임 관계 추적
-
-### 🕐 구법령 조회
-> 과거 특정 시점의 법령 조회
-
-- 시행일 기준 과거 법령 원문 조회
-- 개정 이력 추적
+- **공무원·지자체 담당자** — 상위법령-조례 위임 관계, 조례 개정 시 상위법 변경사항 추적
+- **관세사·무역 전문가** — 관세법 3단 비교, 관세청 해석례, HS코드 분류 기준
+- **세무사·변호사** — 세법 개정 영향 분석, 조세심판원 재결례, 법령해석례
 
 ---
 
-## 🏗️ 시스템 아키텍처
-
-### 전체 구조
-
-![LexDiff System Architecture](docs/architecture.svg)
-
-### 레이어별 구성
-
-| Layer | Components | 설명 |
-|-------|------------|------|
-| **Frontend** | Law Viewer, AI Search, Precedent Search | React 19 + shadcn/ui 기반 SPA |
-| **API** | 73개 REST 엔드포인트 | Next.js API Routes, Zod 검증 |
-| **External** | 법제처 API, Gemini AI | XML/JSON 응답 처리, SSE 스트리밍 |
-| **Storage** | IndexedDB, HTTP Cache, Turso | 다층 캐싱으로 ~25ms 응답 |
-
----
-
-## 🔬 기술 Deep Dive
-
-### 법령 조회 파이프라인
-
-사용자가 "관세법 38조"를 입력하면 다음 과정을 거쳐 법령을 표시합니다:
-
-![Law Query Pipeline](docs/law-pipeline.svg)
-
-#### 단계별 상세
-
-| 단계 | 처리 내용 | 구현 파일 |
-|------|-----------|-----------|
-| **쿼리 파싱** | `"관세법 38조"` → `{ lawName: "관세법", jo: "003800" }` | `lib/law-parser.ts` |
-| **JO 정규화** | `"제38조"` → `"003800"`, `"제38조의2"` → `"003802"` (6자리) | `lib/law-parser.ts` |
-| **캐시 확인** | IndexedDB에서 법령ID+조문번호로 조회 (TTL: 7일) | `lib/law-content-cache.ts` |
-| **API 호출** | `/api/law-search` (XML) → `/api/eflaw` (JSON) 순차 호출 | `app/api/eflaw/route.ts` |
-| **렌더링** | 조문 트리 구조화 + 항/호/목 들여쓰기 + 개정 마커 스타일링 | `components/law-viewer.tsx` |
-
-#### 핵심 알고리즘
-
-**유사도 매칭 (Levenshtein Distance)**
-```
-사용자 입력: "관세법 시행령"
-후보 1: "관세법 시행령" → 유사도 100% ✓
-후보 2: "관세법 시행규칙" → 유사도 85%
-후보 3: "관세사법" → 유사도 60% ✗
-
-임계값: 단일 결과 85%, 다중 결과 60% (적응형)
-```
-
-**통합 링크 시스템**
-- 법령 본문 내 `관세법 제38조`, `같은 법 시행령 제10조` 등을 자동 감지
-- 클릭 가능한 링크로 변환 → 해당 조문 모달 표시
-- 구현: `lib/unified-link-generator.ts` (유일 진입점)
-
----
-
-### AI RAG 시스템 아키텍처
-
-자연어 질문 → 법령 기반 AI 답변을 실시간 스트리밍으로 제공합니다:
-
-![AI RAG Pipeline](docs/ai-rag-pipeline.svg)
-
-#### 단계별 상세
-
-| 단계 | 처리 내용 | 구현 파일 |
-|------|-----------|-----------|
-| **쿼리 분류** | 질문 유형 (정의/요건/절차/비교) + 도메인 (관세/세무/일반) 감지 | `lib/query-classifier.ts` |
-| **2-Tier 라우팅** | Tier 1: 법률 전문 질문 → 상세 프롬프트, Tier 2: 일반 질문 → 간결 프롬프트 | `lib/ai-prompt-router.ts` |
-| **Gemini RAG** | File Search 벡터 스토어에서 관련 법령 검색 → 컨텍스트 주입 → 답변 생성 | `lib/file-search-client.ts` |
-| **SSE 스트리밍** | `data: {"type":"text","text":"..."}` 형식으로 실시간 청크 전송 | `app/api/file-search-rag/route.ts` |
-| **후처리** | 마크다운 → HTML 변환 + 법령 참조 자동 링크화 + 섹션 스타일링 | `lib/ai-answer-processor.ts` |
-| **Citation** | 인용된 법령 클릭 → 해당 조문 모달 표시, 히스토리 스택으로 뒤로가기 | `components/reference-modal.tsx` |
-
-#### 성능 최적화
-
-**Exponential Backoff 재시도**
-```
-429/5xx 에러 발생 시:
-  1차 시도: 1초 대기 (±20% Jitter)
-  2차 시도: 2초 대기
-  3차 시도: 4초 대기
-  4차 시도: 8초 대기 (최대)
-```
-
-**SSE 버퍼 처리 (Critical)**
-```typescript
-// 스트림 종료 후 버퍼에 남은 데이터 처리 필수
-let buffer = ''
-const chunk = decoder.decode(value, { stream: true })
-buffer += chunk
-const lines = buffer.split('\n')
-buffer = lines.pop() || ''  // 마지막 불완전한 줄 보관
-
-// 루프 종료 후
-if (buffer.trim()) {
-  // 잔여 버퍼 처리 (누락 시 답변 잘림)
-}
-```
-
-**캐싱 전략**
-- AI 결과 IndexedDB 저장 → 동일 질문 시 즉시 복원
-- 뒤로가기 버튼 클릭 시 캐시에서 즉시 로드
-
----
-
-### 판례/해석례 검색 시스템
-
-법령과 함께 관련 판례를 통합 검색합니다:
-
-![Precedent Search System](docs/precedent-search.svg)
-
-#### 지원 데이터 소스
-
-| 소스 | API | 설명 |
-|------|-----|------|
-| **대법원/하급심 판례** | `/api/precedent-*` | 판시사항, 판결요지, 전문 조회 |
-| **법령해석례** | `/api/interpretation-*` | 법제처 해석 사례 |
-| **조세심판원 재결례** | `/api/tax-tribunal-*` | 조세 분쟁 재결 |
-| **관세청 법령해석** | `/api/customs-*` | 관세 분야 해석 사례 |
-
----
-
-## 🛡️ 엔터프라이즈급 안정성
-
-### 테스트 커버리지
-
-![Test Coverage](docs/test-coverage.svg)
-
-### 보안 체계
-
-| 영역 | 구현 내용 |
-|------|-----------|
-| **Rate Limiting** | 일반 API: 100req/min, AI API: 20req/min |
-| **일일 쿼터** | AI 요청 100회/일 (비용 관리) |
-| **입력 검증** | Zod 스키마 기반 서버사이드 검증 |
-| **XSS 방지** | HTML 이스케이프 + CSP 헤더 |
-| **보안 헤더** | X-Content-Type-Options, X-Frame-Options 등 |
-
-### 성능 최적화
-
-| 기법 | 적용 영역 | 효과 |
-|------|-----------|------|
-| **Optimistic UI** | 행정규칙 로딩 | 캐시 즉시 표시 + 백그라운드 갱신 |
-| **IndexedDB 캐싱** | 법령/AI 결과 | 캐시 히트 시 ~25ms 응답 |
-| **React Virtual** | 긴 법령 목록 | DOM 노드 최소화 |
-| **Exponential Backoff** | API 호출 | 429/5xx 자동 재시도 |
-
-### CI/CD 파이프라인
-
-![CI/CD Pipeline](docs/ci-cd-pipeline.svg)
-
----
-
-## 🚀 빠른 시작
-
-### 요구 사항
-- Node.js 20+
-- pnpm (권장) 또는 npm
-
-### 설치
+## Quick start
 
 ```bash
-# 저장소 클론
-git clone https://github.com/your-repo/lexdiff.git
+git clone https://github.com/chrisryugj/lexdiff.git
 cd lexdiff
-
-# 의존성 설치
 pnpm install
-
-# 환경 변수 설정
-cp .env.local.example .env.local
+cp .env.local.example .env.local   # API 키 설���
+pnpm dev                            # http://localhost:3000
 ```
 
-`.env.local` 파일 편집:
-```env
-LAW_OC=법제처_API_키
-GEMINI_API_KEY=Google_Gemini_API_키
-```
-
-### 실행
-
-```bash
-# 개발 서버
-pnpm dev
-
-# 테스트
-pnpm test:run
-
-# 빌드
-pnpm build
-```
-
-브라우저에서 `http://localhost:3000` 접속
+**Requirements**: Node.js 20+, pnpm
 
 ---
 
-## 📊 기술 스택
+## Architecture
 
-| 영역 | 기술 |
-|------|------|
-| **Framework** | Next.js 16, React 19, TypeScript 5 |
-| **UI** | Tailwind CSS v4, shadcn/ui, Radix UI, hugeicons |
-| **AI** | Google Gemini 2.5 Flash, File Search RAG, SSE Streaming |
-| **Data** | 법제처 Open API (73개 엔드포인트), Turso/LibSQL |
-| **Caching** | IndexedDB (7일 쿼리 캐시, 영구 행정규칙), HTTP Cache |
-| **Testing** | Vitest, Testing Library (667개 테스트) |
-| **Security** | Rate Limiting, Zod Validation, CSP Headers |
+```
+사용자 질문
+  ↓
+Claude Sonnet 4.6 (CLI subprocess, stream-json)
+  ↓ MCP 도구 호출
+법제처 API (73개 엔드포인트)  ←→  korean-law MCP
+  ↓
+실시간 SSE 스트리밍 → UI
+```
+
+| Layer | Stack |
+|-------|-------|
+| **Frontend** | React 19, Tailwind v4, shadcn/ui, Framer Motion |
+| **Backend** | Next.js 16 API Routes, Zod validation |
+| **AI** | Claude Sonnet 4.6 (primary), Gemini Flash (fallback), MCP tool use |
+| **Data** | 법제처 Open API, Supabase PostgreSQL, IndexedDB cache |
+| **Testing** | Vitest, 667 tests |
 
 ---
 
-## 📁 프로젝트 구조
+## Project structure
 
 ```
-app/
-├── page.tsx                    # 메인 페이지
-├── api/                        # 73개 API 라우트
-│   ├── file-search-rag/        # AI RAG (SSE 스트리밍)
-│   ├── eflaw/                  # 법령 조회
-│   ├── precedent-*/            # 판례 검색/조회
-│   ├── interpretation-*/       # 해석례 검색/조회
-│   └── three-tier/             # 3단 비교
-components/
-├── law-viewer.tsx              # 메인 법령 뷰어 (오케스트레이터)
-├── law-viewer/                 # 분리된 하위 컴포넌트
-├── precedent-section.tsx       # 판례 섹션
-├── reference-modal.tsx         # 법령 참조 모달
-└── comparison-modal.tsx        # 신·구법 비교 모달
-lib/
-├── unified-link-generator.ts   # 법령 링크 생성 시스템
-├── file-search-client.ts       # AI 클라이언트
-├── law-parser.ts               # JO 코드 파서
-└── precedent-parser.ts         # 판례 파서
-hooks/
-├── use-law-viewer-*.ts         # 법령 뷰어 훅
-└── use-precedents.ts           # 판례 데이터 훅
+app/api/          73 API routes (law, precedent, AI RAG, comparison...)
+components/       Law viewer, search, modals, precedent panels
+lib/              Core logic (link generator, law parser, AI engine)
+hooks/            React hooks (law viewer, search, precedents)
+demo/             Remotion intro video source
 ```
 
 ---
 
-## 📈 최근 업데이트
+## Tech stack
 
-### v2.0 (2025-12)
-- **law-viewer 대규모 리팩토링**: 1,820줄 → 1,189줄 (35% 감소)
-- **판례/해석례 API 9개 추가**: 판례·해석례·조세심판원·관세청 검색
-- **구법령 조회**: 과거 시점 법령 조회 지원
-- **테스트 667개**: 테스트 커버리지 2배 이상 확대
-
-### v1.0 (2025-11)
-- AI 자연어 검색 (Gemini 2.5 Flash + File Search RAG)
-- 3단 위임법령 비교 시스템
-- 행정규칙 자동 연동
-- Optimistic UI 패턴
+Next.js 16 · React 19 · TypeScript 5 · Tailwind CSS v4 · shadcn/ui · Radix UI ·
+Claude Sonnet 4.6 · Gemini 2.5 Flash · korean-law MCP · Supabase · Turso/LibSQL ·
+IndexedDB · Vitest · Framer Motion
 
 ---
 
-## 📄 라이선스
+## License
 
-MIT License
+MIT
 
 ---
 
-**LexDiff** — 법령 분석의 새로운 기준
+<p align="center">
+  <strong>LexDiff</strong> — 법령을 쉽게. AI로 똑똑하게.<br/>
+  <sub>Korean law search · AI legal analysis · statute comparison · precedent search · ordinance lookup</sub>
+</p>
