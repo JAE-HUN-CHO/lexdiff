@@ -10,15 +10,8 @@
 
 import { parseHwpx, parseHwp, isHwpxFile, isOldHwpFile, isPdfFile } from "kordoc"
 import type { ParseResult } from "kordoc"
-// Vercel 서버리스(Node.js): DOMMatrix polyfill (pdfjs-dist가 참조)
-if (typeof globalThis.DOMMatrix === "undefined") {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(globalThis as any).DOMMatrix = class DOMMatrix {
-    m: number[] = [1, 0, 0, 1, 0, 0]
-    constructor(init?: number[]) { if (init) this.m = init }
-  }
-}
-
+// polyfill 먼저 (ES 모듈 호이스팅되므로 별도 파일로 분리)
+import "./pdf-polyfill"
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs"
 
 // Node.js/Vercel: worker 비활성화 (static import 시점에 설정해야 유효)
