@@ -8,7 +8,8 @@ import { useCallback } from "react"
 import { debugLogger } from "@/lib/debug-logger"
 import { normalizeLawSearchText } from "@/lib/search-normalizer"
 import { parseLawSearchXML } from "@/lib/law-search-parser"
-import { parseOrdinanceSearchXML } from "@/lib/ordin-search-parser"
+import { parseOrdinanceSearchXML, type OrdinanceSearchResult } from "@/lib/ordin-search-parser"
+import { parseOrdinanceXML } from "@/lib/ordin-parser"
 import { parseAdminRuleList } from "@/lib/admrul-parser"
 import { buildFullQuery, isOrdinanceQuery as checkIsOrdinanceQuery, hasAdminRuleKeyword } from "../../utils"
 import { buildOrdinanceSearchStrategies, scoreRelevance, expandForLawSearch } from "@/lib/query-expansion"
@@ -18,8 +19,103 @@ interface UseBasicSearchDeps extends HandlerDeps {
   fetchLawContent: (selectedLaw: LawSearchResult, query: SearchQuery, skipCache?: boolean) => Promise<void>
 }
 
+/**
+ * 조례 정확 매칭 시 검색 목록을 건너뛰고 바로 본문을 가져오는 헬퍼.
+ * handleOrdinanceSelect와 동일한 로직이지만, ordinanceSelectionState 없이 동작.
+ * 실패 시 false를 반환하여 선택 목록 폴백을 유도한다.
+ */
+async function fetchOrdinanceDirect(
+  ordinance: OrdinanceSearchResult,
+  actions: HandlerDeps['actions'],
+  toast: HandlerDeps['toast'],
+  searchMode: 'basic' | 'rag',
+): Promise<boolean> {
+  try {
+    actions.updateProgress('parsing', 85)
+
+    const params = new URLSearchParams()
+    if (ordinance.ordinId) {
+      params.append("ordinId", ordinance.ordinId)
+    } else {
+      params.append("ordinSeq", ordinance.ordinSeq)
+    }
+
+    const response = await fetch("/api/ordin?" + params.toString())
+    if (!response.ok) return false
+
+    const xmlText = await response.text()
+    const parsedData = parseOrdinanceXML(xmlText)
+
+    if (parsedData.articles.length === 0) {
+      toast({ title: "조문 없음", description: "이 자치법규의 조문을 찾을 수 없습니다.", variant: "destructive" })
+    }
+
+    actions.setLawData({
+      meta: parsedData.meta,
+      articles: parsedData.articles,
+      selectedJo: undefined,
+      isOrdinance: true,
+      viewMode: "full",
+    })
+
+    // IndexedDB 캐시 저장
+    try {
+      const { saveSearchResult, getSearchResult } = await import('@/lib/search-result-store')
+      const currentSearchId = window.history.state?.searchId
+      if (currentSearchId) {
+        const existingCache = await getSearchResult(currentSearchId)
+        if (existingCache) {
+          await saveSearchResult({
+            ...existingCache,
+            query: { lawName: parsedData.meta.lawTitle },
+            lawData: {
+              meta: {
+                ordinSeq: ordinance.ordinSeq,
+                ordinId: ordinance.ordinId,
+                lawName: parsedData.meta.lawTitle,
+              },
+              articles: parsedData.articles.map(a => ({
+                joNumber: a.jo,
+                joLabel: a.joNum,
+                content: a.content,
+                isDeleted: false,
+              })),
+              selectedJo: null,
+              isOrdinance: true,
+              viewMode: "full",
+            },
+          })
+        }
+      }
+    } catch {
+      // 캐시 저장 실패는 무시
+    }
+
+    // History entry 추가
+    try {
+      const currentSearchId = window.history.state?.searchId
+      if (currentSearchId) {
+        const { pushSearchHistory } = await import('@/lib/history-manager')
+        pushSearchHistory(currentSearchId, searchMode || 'basic', { hasOrdinanceDetail: true })
+      }
+    } catch {
+      // 히스토리 실패는 무시
+    }
+
+    actions.setMobileView("content")
+    actions.updateProgress('complete', 100)
+    actions.setIsSearching(false)
+
+    debugLogger.success("조례 정확 매칭 자동 선택", { ordinName: parsedData.meta.lawTitle })
+    return true
+  } catch (error) {
+    debugLogger.warning("조례 자동 선택 실패, 목록으로 폴백", error)
+    return false
+  }
+}
+
 export function useBasicSearch(deps: UseBasicSearchDeps) {
-  const { actions, toast, reportError, fetchLawContent } = deps
+  const { state, actions, toast, reportError, fetchLawContent } = deps
 
   const handleBasicSearch = useCallback(async (
     query: SearchQuery,
@@ -259,6 +355,18 @@ export function useBasicSearch(deps: UseBasicSearchDeps) {
           return
         }
 
+        // 정확 매칭 자동 선택 (법령 검색과 동일한 UX)
+        const normalizedOrdinQuery = lawName.replace(/\s+/g, "")
+        const exactOrdinMatch = allOrdinances.find(o =>
+          o.ordinName.replace(/\s+/g, "") === normalizedOrdinQuery
+        )
+
+        if (exactOrdinMatch) {
+          const fetched = await fetchOrdinanceDirect(exactOrdinMatch, actions, toast, state.searchMode || 'basic')
+          if (fetched) return
+          // fetch 실패 시 선택 목록으로 폴백
+        }
+
         // 원본 검색어와 다른 전략으로 찾은 경우 알림
         if (matchedStrategy && !matchedStrategy.startsWith('원본')) {
           toast({
@@ -444,7 +552,7 @@ export function useBasicSearch(deps: UseBasicSearchDeps) {
       actions.setIsSearching(false)
       actions.updateProgress('complete', 100)
     }
-  }, [actions, fetchLawContent, reportError, toast])
+  }, [actions, state.searchMode, fetchLawContent, reportError, toast])
 
   return { handleBasicSearch }
 }
