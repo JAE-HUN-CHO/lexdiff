@@ -30,10 +30,11 @@ export function useBasicHandlers(deps: UseBasicHandlersDeps) {
   }, [handleSearchInternal])
 
   const handleSearchChoice = useCallback((mode: 'law' | 'ai') => {
+    const query = state.pendingQuery
+    actions.setPendingQuery(null)
     actions.setShowChoiceDialog(false)
-    if (state.pendingQuery) {
-      handleSearchInternal(state.pendingQuery, undefined, mode)
-      actions.setPendingQuery(null)
+    if (query) {
+      handleSearchInternal(query, undefined, mode)
     }
   }, [actions, state.pendingQuery, handleSearchInternal])
 

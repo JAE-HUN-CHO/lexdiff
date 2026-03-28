@@ -127,10 +127,10 @@ export function useBasicSearch(deps: UseBasicSearchDeps) {
 
           if (adminRules.length === 0) {
             debugLogger.warning(`⚠️ [행정규칙 검색] "${lawName}" 검색 결과 없음 -> AI 검색 제안`)
-            actions.setPendingQuery(query)
+            actions.setNoResultQuery(query)
             actions.setIsSearching(false)
             actions.updateProgress('complete', 0)
-            actions.setShowChoiceDialog(true)
+            actions.setShowNoResultDialog(true)
             toast({ title: "검색 결과 없음", description: "정확한 행정규칙을 찾을 수 없어 AI 검색을 제안합니다." })
             return
           }
@@ -252,8 +252,8 @@ export function useBasicSearch(deps: UseBasicSearchDeps) {
             title: "조례 검색 결과 없음",
             description: `"${lawName}"에 해당하는 조례를 찾을 수 없습니다. AI 검색을 시도해보세요.`,
           })
-          actions.setPendingQuery(query)
-          actions.setShowChoiceDialog(true)
+          actions.setNoResultQuery(query)
+          actions.setShowNoResultDialog(true)
           actions.updateProgress('complete', 0)
           actions.setIsSearching(false)
           return
@@ -360,10 +360,10 @@ export function useBasicSearch(deps: UseBasicSearchDeps) {
 
         if (results.length === 0) {
           debugLogger.warning(`⚠️ [법령 검색] "${lawName}" 검색 결과 없음 -> AI 검색 제안`)
-          actions.setPendingQuery(query)
+          actions.setNoResultQuery(query)
           actions.setIsSearching(false)
           actions.updateProgress('complete', 0)
-          actions.setShowChoiceDialog(true)
+          actions.setShowNoResultDialog(true)
           toast({ title: "검색 결과 없음", description: "정확한 법령을 찾을 수 없어 AI 검색을 제안합니다." })
           return
         }

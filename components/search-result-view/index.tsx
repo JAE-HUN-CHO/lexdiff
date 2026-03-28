@@ -702,12 +702,17 @@ function SearchResultViewComponent({
       <SearchChoiceDialog
         open={state.showChoiceDialog}
         onOpenChange={(open) => {
-          actions.setShowChoiceDialog(open)
-          // X 버튼으로 닫힐 때 홈으로 복귀 (빈화면 방지)
-          if (!open && state.pendingQuery) {
-            actions.setPendingQuery(null)
-            actions.resetToHome()
-            onBack()
+          if (!open) {
+            // onChoice 핸들러가 이미 pendingQuery를 클리어한 경우: 정상 검색 진행 중 → 무시
+            // pendingQuery가 남아있으면: X 버튼 또는 Escape로 닫힌 것 → 홈으로 복귀
+            if (state.pendingQuery) {
+              actions.setShowChoiceDialog(false)
+              actions.setPendingQuery(null)
+              actions.resetToHome()
+              onBack()
+            }
+          } else {
+            actions.setShowChoiceDialog(open)
           }
         }}
         pendingQuery={state.pendingQuery}
