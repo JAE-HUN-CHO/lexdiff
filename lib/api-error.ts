@@ -16,5 +16,5 @@ export function safeErrorResponse(
 
   debugLogger.error(context || userMessage, { message: internalMessage, stack })
 
-  return NextResponse.json({ error: userMessage, _debug: internalMessage }, { status })
+  return NextResponse.json({ error: userMessage }, { status })
 }

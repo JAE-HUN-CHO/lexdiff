@@ -1,0 +1,1605 @@
+{
+  "timestamp": "2026-03-20-23-29",
+  "url": "http://localhost:3000",
+  "flow": "home -> legal search (관세법 38조) -> desktop result -> mobile home/result",
+  "homeChecks": {
+    "label": "home-desktop",
+    "url": "http://localhost:3000/",
+    "viewport": {
+      "width": 1440,
+      "height": 1100
+    },
+    "textSample": [
+      "LexDiff",
+      "LexDiff",
+      "Premium Legal AI",
+      "LexDiff",
+      "어려운 법률 용어 대신 일상 언어로,공직자를 위한 가장 쉬운 지능형 법령 검색 플랫폼",
+      "검색",
+      "검색",
+      "변경 영향 분석",
+      "변경 영향 분석",
+      "조례 미반영 탐지",
+      "조례 미반영 탐지",
+      "조례 벤치마킹"
+    ],
+    "a11yIssues": [
+      {
+        "type": "input-no-label",
+        "html": "<input type=\"text\" data-slot=\"input\" class=\"file:text-foreground selection:bg-primary selection:text-primary-foreground "
+      }
+    ],
+    "typography": {
+      "h1": {
+        "fontFamily": "\"Libre Bodoni\"",
+        "fontSize": "96px",
+        "fontWeight": "500",
+        "lineHeight": "105.6px",
+        "letterSpacing": "-4.8px"
+      },
+      "h2": {
+        "fontFamily": "Pretendard",
+        "fontSize": "14px",
+        "fontWeight": "700",
+        "lineHeight": "20px",
+        "letterSpacing": "2.8px"
+      },
+      "h3": {
+        "fontFamily": "RIDIBatang",
+        "fontSize": "48px",
+        "fontWeight": "900",
+        "lineHeight": "48px",
+        "letterSpacing": "normal"
+      },
+      "h4": {
+        "fontFamily": "RIDIBatang",
+        "fontSize": "20px",
+        "fontWeight": "700",
+        "lineHeight": "28px",
+        "letterSpacing": "normal"
+      },
+      "p": {
+        "fontFamily": "RIDIBatang",
+        "fontSize": "20px",
+        "fontWeight": "500",
+        "lineHeight": "32.5px",
+        "letterSpacing": "1px"
+      },
+      "span": {
+        "fontFamily": "\"Libre Bodoni\"",
+        "fontSize": "24px",
+        "fontWeight": "500",
+        "lineHeight": "32px",
+        "letterSpacing": "-0.6px"
+      },
+      "button": {
+        "fontFamily": "Pretendard",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "letterSpacing": "normal"
+      }
+    },
+    "fontFamilies": [
+      "Pretendard",
+      "\"Libre Bodoni\"",
+      "RIDIBatang",
+      "__nextjs-Geist"
+    ],
+    "colorCount": 26,
+    "colors": [
+      "rgb(0, 0, 0)",
+      "lab(86.1021 -2.42376 -4.93162)",
+      "oklab(0.279998 -0.0136834 -0.0375796 / 0.5)",
+      "lab(3.04768 -1.31044 -4.08459)",
+      "lab(98.2681 -0.82314 -1.65228)",
+      "oklch(0.97 0.005 90)",
+      "lab(91.6229 -0.159085 -2.26791)",
+      "rgb(255, 255, 255)",
+      "oklch(0.22 0.04 250)",
+      "lab(36.2224 -3.08807 -6.5062)",
+      "lab(35.6337 -1.58697 -10.8425)",
+      "oklab(0.22 -0.0136808 -0.0375877 / 0.2)",
+      "oklch(0.55 0.12 75)",
+      "lab(85.1236 -0.612259 -3.7138)",
+      "lab(47.7841 -0.393212 -10.0268)",
+      "lab(65.9269 -0.832707 -8.17474)",
+      "lab(8.11897 0.811279 -12.254)",
+      "oklab(0.999994 0.0000455677 0.0000200868 / 0.6)",
+      "oklab(0.22 -0.0136808 -0.0375877 / 0.15)",
+      "lab(98.2596 -0.247031 -0.706708)",
+      "lab(96.1596 -0.082314 -1.13575)",
+      "oklab(0.55 0.0310583 0.115911 / 0.2)",
+      "oklab(0.55 0.0310583 0.115911 / 0.3)",
+      "oklab(0.22 -0.0136808 -0.0375877 / 0.6)",
+      "oklch(0.98 0.005 90)",
+      "rgb(117, 117, 117)"
+    ],
+    "lowContrast": [],
+    "spacingValues": [
+      4,
+      8,
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      80,
+      96,
+      160,
+      240
+    ],
+    "spacingViolations": [],
+    "maxDOMDepth": 13,
+    "layoutCounts": {
+      "flex": 58,
+      "grid": 2,
+      "block": 118,
+      "inline": 107,
+      "other": 72
+    },
+    "emptyDivs": 10,
+    "singleChildWrappers": 4,
+    "borderRadiusValues": [
+      "6px",
+      "3.35544e+07px"
+    ],
+    "shadowVariants": 1,
+    "borderWidths": [
+      "1px"
+    ],
+    "buttonHeights": [
+      16,
+      32,
+      38,
+      40,
+      64,
+      205
+    ],
+    "imageSizes": [
+      "22x22",
+      "16x16",
+      "14x14",
+      "24x24",
+      "20x20",
+      "13x13"
+    ],
+    "bodyScrollWidth": 1440,
+    "windowWidth": 1440,
+    "hasHorizontalScroll": false,
+    "overflowingEls": [],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "text": "LexDiff",
+        "width": 129,
+        "height": 40
+      },
+      {
+        "tag": "BUTTON",
+        "text": "다크 모드로 전환",
+        "width": 16,
+        "height": 16
+      },
+      {
+        "tag": "BUTTON",
+        "text": "사용 가이드",
+        "width": 36,
+        "height": 32
+      },
+      {
+        "tag": "BUTTON",
+        "text": "설정 / API 키 등록",
+        "width": 16,
+        "height": 16
+      },
+      {
+        "tag": "BUTTON",
+        "text": "변경 영향 분석",
+        "width": 160,
+        "height": 38
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조례 미반영 탐지",
+        "width": 172,
+        "height": 38
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조례 벤치마킹",
+        "width": 156,
+        "height": 38
+      },
+      {
+        "tag": "BUTTON",
+        "text": "이용 안내",
+        "width": 45,
+        "height": 16
+      }
+    ],
+    "activeAnimations": [
+      {
+        "duration": 1000,
+        "iterations": 1
+      },
+      {
+        "duration": 1000,
+        "iterations": 1
+      },
+      {
+        "duration": 1000,
+        "iterations": 1
+      },
+      {
+        "duration": 800,
+        "iterations": 1
+      },
+      {
+        "duration": 800,
+        "iterations": 1
+      },
+      {
+        "duration": 800,
+        "iterations": 1
+      },
+      {
+        "duration": 800,
+        "iterations": 1
+      },
+      {
+        "duration": 800,
+        "iterations": 1
+      }
+    ],
+    "infiniteAnimations": 0,
+    "longTransitionCount": 18,
+    "hasReducedMotionRule": false
+  },
+  "resultChecks": {
+    "label": "search-result-desktop",
+    "url": "http://localhost:3000/",
+    "viewport": {
+      "width": 1440,
+      "height": 1100
+    },
+    "textSample": [
+      "LexDiff",
+      "LexDiff",
+      "관세법 제38조",
+      "관세법 제38조",
+      "조문 목록",
+      "423개 조문",
+      "423",
+      "423",
+      "관세법",
+      "2026-02-01",
+      "423개 조문",
+      "타법개정"
+    ],
+    "a11yIssues": [
+      {
+        "type": "button-no-label",
+        "html": "<button class=\"absolute top-4 right-4 text-muted-foreground hover:text-foreground\"><svg xmlns=\"http://www.w3.org/2000/sv"
+      },
+      {
+        "type": "button-no-label",
+        "html": "<button class=\"absolute top-4 right-4 text-muted-foreground hover:text-foreground\"><svg xmlns=\"http://www.w3.org/2000/sv"
+      },
+      {
+        "type": "button-no-label",
+        "html": "<button data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm fon"
+      },
+      {
+        "type": "button-no-label",
+        "html": "<button data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm fon"
+      },
+      {
+        "type": "input-no-label",
+        "html": "<input data-slot=\"input\" class=\"file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:te"
+      }
+    ],
+    "typography": {
+      "h2": {
+        "fontFamily": "Pretendard",
+        "fontSize": "20px",
+        "fontWeight": "700",
+        "lineHeight": "28px",
+        "letterSpacing": "normal"
+      },
+      "h3": {
+        "fontFamily": "Pretendard",
+        "fontSize": "20px",
+        "fontWeight": "700",
+        "lineHeight": "28px",
+        "letterSpacing": "normal"
+      },
+      "h4": {
+        "fontFamily": "Pretendard",
+        "fontSize": "14px",
+        "fontWeight": "600",
+        "lineHeight": "20px",
+        "letterSpacing": "normal"
+      },
+      "p": {
+        "fontFamily": "Pretendard",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "letterSpacing": "normal"
+      },
+      "span": {
+        "fontFamily": "Pretendard",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "letterSpacing": "normal"
+      },
+      "button": {
+        "fontFamily": "Pretendard",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "letterSpacing": "normal"
+      },
+      "a": {
+        "fontFamily": "RIDIBatang",
+        "fontSize": "15px",
+        "fontWeight": "500",
+        "lineHeight": "27px",
+        "letterSpacing": "normal"
+      }
+    },
+    "fontFamilies": [
+      "Pretendard",
+      "__nextjs-Geist",
+      "\"Libre Bodoni\"",
+      "RIDIBatang"
+    ],
+    "colorCount": 30,
+    "colors": [
+      "rgb(0, 0, 0)",
+      "lab(86.1021 -2.42376 -4.93162)",
+      "oklab(0.279998 -0.0136834 -0.0375796 / 0.5)",
+      "lab(3.04768 -1.31044 -4.08459)",
+      "lab(98.2681 -0.82314 -1.65228)",
+      "rgb(117, 117, 117)",
+      "oklch(0.98 0.005 90)",
+      "oklab(0.984997 -0.00250959 -0.00430685 / 0.95)",
+      "oklch(0.22 0.04 250)",
+      "rgb(255, 255, 255)",
+      "oklab(0.939998 -0.00750899 -0.0129678 / 0.5)",
+      "oklab(0.279998 -0.0136834 -0.0375796 / 0.2)",
+      "lab(36.2224 -3.08807 -6.5062)",
+      "lab(54.1736 13.3368 -74.6839)",
+      "lab(98.845 -0.495434 -0.992274)",
+      "lab(97.6956 -1.63329 -3.29721)",
+      "lab(16.3613 -2.71212 -13.6872)",
+      "lab(7.23336 -2.52666 -6.34827)",
+      "lab(90.7483 -3.20742 -6.5629)",
+      "lab(22.1752 19.1146 -66.5172)",
+      "lab(22.6848 13.0887 -59.7674)",
+      "lab(92.94 -5.59592 -20.9818)",
+      "lab(26.3791 -47.0223 33.6397)",
+      "lab(94.9948 -17.7921 11.394)",
+      "oklab(0.879997 -0.00750825 -0.0129693 / 0.5)",
+      "lab(93.0624 -2.428 -4.93382)",
+      "oklab(0 0 0 / 0.7)",
+      "oklab(0.919997 -0.0100084 -0.0172983 / 0.3)",
+      "lab(35.6337 -1.58697 -10.8425)",
+      "lab(91.6229 -0.159085 -2.26791)"
+    ],
+    "lowContrast": [],
+    "spacingValues": [
+      2,
+      4,
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      24,
+      48,
+      80
+    ],
+    "spacingViolations": [
+      2,
+      6,
+      10,
+      14
+    ],
+    "maxDOMDepth": 21,
+    "layoutCounts": {
+      "flex": 106,
+      "grid": 2,
+      "block": 163,
+      "inline": 138,
+      "other": 91
+    },
+    "emptyDivs": 30,
+    "singleChildWrappers": 32,
+    "borderRadiusValues": [
+      "6px",
+      "12px",
+      "3.35544e+07px"
+    ],
+    "shadowVariants": 4,
+    "borderWidths": [
+      "1px"
+    ],
+    "buttonHeights": [
+      16,
+      28,
+      32,
+      36,
+      40,
+      46,
+      48,
+      62
+    ],
+    "imageSizes": [
+      "16x16",
+      "18x18",
+      "20x20",
+      "12x12",
+      "48x48",
+      "14x14"
+    ],
+    "bodyScrollWidth": 1440,
+    "windowWidth": 1440,
+    "hasHorizontalScroll": false,
+    "overflowingEls": [],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "text": "뒤로가기",
+        "width": 36,
+        "height": 36
+      },
+      {
+        "tag": "BUTTON",
+        "text": "LexDiff",
+        "width": 112,
+        "height": 36
+      },
+      {
+        "tag": "BUTTON",
+        "text": "관세법 제38조",
+        "width": 131,
+        "height": 36
+      },
+      {
+        "tag": "BUTTON",
+        "text": "다크 모드로 전환",
+        "width": 16,
+        "height": 16
+      },
+      {
+        "tag": "BUTTON",
+        "text": "사용법 안내",
+        "width": 32,
+        "height": 32
+      },
+      {
+        "tag": "BUTTON",
+        "text": "설정",
+        "width": 36,
+        "height": 36
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조문 목록 접기",
+        "width": 28,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "제41조삭제된 조문",
+        "width": 225,
+        "height": 40
+      },
+      {
+        "tag": "BUTTON",
+        "text": "신·구법 비교비교",
+        "width": 116,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "AI 요약요약",
+        "width": 88,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "원문 보기원문",
+        "width": 100,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "위임법령위임",
+        "width": 96,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "판례판례",
+        "width": 72,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "분석2",
+        "width": 123,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "즐겨찾기",
+        "width": 96,
+        "height": 28
+      }
+    ],
+    "activeAnimations": [],
+    "infiniteAnimations": 0,
+    "longTransitionCount": 0,
+    "hasReducedMotionRule": false
+  },
+  "mobileHomeChecks": {
+    "label": "home-mobile",
+    "url": "http://localhost:3000/",
+    "viewport": {
+      "width": 375,
+      "height": 812
+    },
+    "textSample": [
+      "LexDiff",
+      "LexDiff",
+      "Premium Legal AI",
+      "LexDiff",
+      "어려운 법률 용어 대신 일상 언어로,공직자를 위한 가장 쉬운 지능형 법령 검색 플랫폼",
+      "검색",
+      "검색",
+      "변경 영향 분석",
+      "변경 영향 분석",
+      "조례 미반영 탐지",
+      "조례 미반영 탐지",
+      "조례 벤치마킹"
+    ],
+    "a11yIssues": [
+      {
+        "type": "input-no-label",
+        "html": "<input type=\"text\" data-slot=\"input\" class=\"file:text-foreground selection:bg-primary selection:text-primary-foreground "
+      }
+    ],
+    "typography": {
+      "h1": {
+        "fontFamily": "\"Libre Bodoni\"",
+        "fontSize": "60px",
+        "fontWeight": "500",
+        "lineHeight": "66px",
+        "letterSpacing": "-1.5px"
+      },
+      "h2": {
+        "fontFamily": "Pretendard",
+        "fontSize": "14px",
+        "fontWeight": "700",
+        "lineHeight": "20px",
+        "letterSpacing": "2.8px"
+      },
+      "h3": {
+        "fontFamily": "RIDIBatang",
+        "fontSize": "30px",
+        "fontWeight": "900",
+        "lineHeight": "36px",
+        "letterSpacing": "normal"
+      },
+      "h4": {
+        "fontFamily": "RIDIBatang",
+        "fontSize": "20px",
+        "fontWeight": "700",
+        "lineHeight": "28px",
+        "letterSpacing": "normal"
+      },
+      "p": {
+        "fontFamily": "RIDIBatang",
+        "fontSize": "16px",
+        "fontWeight": "500",
+        "lineHeight": "26px",
+        "letterSpacing": "0.8px"
+      },
+      "span": {
+        "fontFamily": "\"Libre Bodoni\"",
+        "fontSize": "20px",
+        "fontWeight": "500",
+        "lineHeight": "28px",
+        "letterSpacing": "-0.5px"
+      },
+      "button": {
+        "fontFamily": "Pretendard",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "letterSpacing": "normal"
+      }
+    },
+    "fontFamilies": [
+      "Pretendard",
+      "\"Libre Bodoni\"",
+      "RIDIBatang",
+      "__nextjs-Geist"
+    ],
+    "colorCount": 26,
+    "colors": [
+      "rgb(0, 0, 0)",
+      "lab(86.1021 -2.42376 -4.93162)",
+      "oklab(0.279998 -0.0136834 -0.0375796 / 0.5)",
+      "lab(3.04768 -1.31044 -4.08459)",
+      "lab(98.2681 -0.82314 -1.65228)",
+      "oklch(0.97 0.005 90)",
+      "lab(91.6229 -0.159085 -2.26791)",
+      "rgb(255, 255, 255)",
+      "oklch(0.22 0.04 250)",
+      "lab(36.2224 -3.08807 -6.5062)",
+      "lab(35.6337 -1.58697 -10.8425)",
+      "oklab(0.22 -0.0136808 -0.0375877 / 0.2)",
+      "oklch(0.55 0.12 75)",
+      "lab(85.1236 -0.612259 -3.7138)",
+      "lab(47.7841 -0.393212 -10.0268)",
+      "lab(65.9269 -0.832707 -8.17474)",
+      "lab(8.11897 0.811279 -12.254)",
+      "oklab(0.999994 0.0000455677 0.0000200868 / 0.6)",
+      "oklab(0.22 -0.0136808 -0.0375877 / 0.15)",
+      "lab(98.2596 -0.247031 -0.706708)",
+      "lab(96.1596 -0.082314 -1.13575)",
+      "oklab(0.55 0.0310583 0.115911 / 0.2)",
+      "oklab(0.55 0.0310583 0.115911 / 0.3)",
+      "oklab(0.22 -0.0136808 -0.0375877 / 0.6)",
+      "oklch(0.98 0.005 90)",
+      "rgb(117, 117, 117)"
+    ],
+    "lowContrast": [],
+    "spacingValues": [
+      4,
+      6,
+      8,
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      96
+    ],
+    "spacingViolations": [
+      6
+    ],
+    "maxDOMDepth": 13,
+    "layoutCounts": {
+      "flex": 57,
+      "grid": 2,
+      "block": 118,
+      "inline": 107,
+      "other": 73
+    },
+    "emptyDivs": 10,
+    "singleChildWrappers": 4,
+    "borderRadiusValues": [
+      "6px",
+      "3.35544e+07px"
+    ],
+    "shadowVariants": 1,
+    "borderWidths": [
+      "1px"
+    ],
+    "buttonHeights": [
+      16,
+      32,
+      34,
+      40,
+      64,
+      169.5
+    ],
+    "imageSizes": [
+      "22x22",
+      "16x16",
+      "14x14",
+      "24x24",
+      "20x20",
+      "13x13"
+    ],
+    "bodyScrollWidth": 375,
+    "windowWidth": 375,
+    "hasHorizontalScroll": false,
+    "overflowingEls": [],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "text": "LexDiff",
+        "width": 116,
+        "height": 40
+      },
+      {
+        "tag": "BUTTON",
+        "text": "다크 모드로 전환",
+        "width": 16,
+        "height": 16
+      },
+      {
+        "tag": "BUTTON",
+        "text": "사용 가이드",
+        "width": 36,
+        "height": 32
+      },
+      {
+        "tag": "BUTTON",
+        "text": "설정 / API 키 등록",
+        "width": 16,
+        "height": 16
+      },
+      {
+        "tag": "BUTTON",
+        "text": "변경 영향 분석",
+        "width": 136,
+        "height": 34
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조례 미반영 탐지",
+        "width": 147,
+        "height": 34
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조례 벤치마킹",
+        "width": 133,
+        "height": 34
+      },
+      {
+        "tag": "BUTTON",
+        "text": "이용 안내",
+        "width": 45,
+        "height": 16
+      }
+    ],
+    "activeAnimations": [
+      {
+        "duration": 800,
+        "iterations": 1
+      },
+      {
+        "duration": 800,
+        "iterations": 1
+      },
+      {
+        "duration": 800,
+        "iterations": 1
+      },
+      {
+        "duration": 800,
+        "iterations": 1
+      },
+      {
+        "duration": 800,
+        "iterations": 1
+      }
+    ],
+    "infiniteAnimations": 0,
+    "longTransitionCount": 18,
+    "hasReducedMotionRule": false
+  },
+  "mobileResultChecks": {
+    "label": "search-result-mobile",
+    "url": "http://localhost:3000/",
+    "viewport": {
+      "width": 375,
+      "height": 812
+    },
+    "textSample": [
+      "LexDiff",
+      "LexDiff",
+      "관세법 제38조",
+      "관세법 제38조",
+      "조문 목록",
+      "423개 조문",
+      "423",
+      "423",
+      "관세법",
+      "2026-02-01",
+      "423개 조문",
+      "타법개정"
+    ],
+    "a11yIssues": [
+      {
+        "type": "button-no-label",
+        "html": "<button class=\"absolute top-4 right-4 text-muted-foreground hover:text-foreground\"><svg xmlns=\"http://www.w3.org/2000/sv"
+      },
+      {
+        "type": "button-no-label",
+        "html": "<button class=\"absolute top-4 right-4 text-muted-foreground hover:text-foreground\"><svg xmlns=\"http://www.w3.org/2000/sv"
+      },
+      {
+        "type": "button-no-label",
+        "html": "<button data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm fon"
+      },
+      {
+        "type": "button-no-label",
+        "html": "<button data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm fon"
+      },
+      {
+        "type": "input-no-label",
+        "html": "<input data-slot=\"input\" class=\"file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:te"
+      }
+    ],
+    "typography": {
+      "h2": {
+        "fontFamily": "Pretendard",
+        "fontSize": "20px",
+        "fontWeight": "700",
+        "lineHeight": "28px",
+        "letterSpacing": "normal"
+      },
+      "h3": {
+        "fontFamily": "Pretendard",
+        "fontSize": "20px",
+        "fontWeight": "700",
+        "lineHeight": "28px",
+        "letterSpacing": "normal"
+      },
+      "h4": {
+        "fontFamily": "Pretendard",
+        "fontSize": "14px",
+        "fontWeight": "600",
+        "lineHeight": "20px",
+        "letterSpacing": "normal"
+      },
+      "p": {
+        "fontFamily": "Pretendard",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "letterSpacing": "normal"
+      },
+      "span": {
+        "fontFamily": "Pretendard",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "letterSpacing": "normal"
+      },
+      "button": {
+        "fontFamily": "Pretendard",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "letterSpacing": "normal"
+      },
+      "a": {
+        "fontFamily": "RIDIBatang",
+        "fontSize": "15px",
+        "fontWeight": "500",
+        "lineHeight": "27px",
+        "letterSpacing": "normal"
+      }
+    },
+    "fontFamilies": [
+      "Pretendard",
+      "__nextjs-Geist",
+      "\"Libre Bodoni\"",
+      "RIDIBatang"
+    ],
+    "colorCount": 28,
+    "colors": [
+      "rgb(0, 0, 0)",
+      "lab(86.1021 -2.42376 -4.93162)",
+      "oklab(0.279998 -0.0136834 -0.0375796 / 0.5)",
+      "lab(3.04768 -1.31044 -4.08459)",
+      "lab(98.2681 -0.82314 -1.65228)",
+      "rgb(117, 117, 117)",
+      "oklch(0.98 0.005 90)",
+      "oklab(0.984997 -0.00250959 -0.00430685 / 0.95)",
+      "oklch(0.22 0.04 250)",
+      "rgb(255, 255, 255)",
+      "oklab(0.939998 -0.00750899 -0.0129678 / 0.5)",
+      "oklab(0.279998 -0.0136834 -0.0375796 / 0.2)",
+      "lab(36.2224 -3.08807 -6.5062)",
+      "lab(54.1736 13.3368 -74.6839)",
+      "lab(98.845 -0.495434 -0.992274)",
+      "lab(97.6956 -1.63329 -3.29721)",
+      "lab(16.3613 -2.71212 -13.6872)",
+      "lab(7.23336 -2.52666 -6.34827)",
+      "lab(90.7483 -3.20742 -6.5629)",
+      "lab(22.1752 19.1146 -66.5172)",
+      "lab(22.6848 13.0887 -59.7674)",
+      "lab(92.94 -5.59592 -20.9818)",
+      "lab(26.3791 -47.0223 33.6397)",
+      "lab(94.9948 -17.7921 11.394)",
+      "oklab(0.879997 -0.00750825 -0.0129693 / 0.5)",
+      "lab(93.0624 -2.428 -4.93382)",
+      "oklab(0 0 0 / 0.7)",
+      "oklab(0.919997 -0.0100084 -0.0172983 / 0.3)"
+    ],
+    "lowContrast": [],
+    "spacingValues": [
+      2,
+      4,
+      6,
+      8,
+      10,
+      12,
+      16,
+      24,
+      48
+    ],
+    "spacingViolations": [
+      2,
+      6,
+      10
+    ],
+    "maxDOMDepth": 21,
+    "layoutCounts": {
+      "flex": 81,
+      "grid": 2,
+      "block": 138,
+      "inline": 171,
+      "other": 108
+    },
+    "emptyDivs": 5,
+    "singleChildWrappers": 31,
+    "borderRadiusValues": [
+      "6px",
+      "12px",
+      "3.35544e+07px"
+    ],
+    "shadowVariants": 4,
+    "borderWidths": [
+      "1px"
+    ],
+    "buttonHeights": [
+      16,
+      20,
+      28,
+      32,
+      36,
+      46,
+      48
+    ],
+    "imageSizes": [
+      "16x16",
+      "18x18",
+      "20x20",
+      "12x12",
+      "48x48",
+      "14x14"
+    ],
+    "bodyScrollWidth": 375,
+    "windowWidth": 375,
+    "hasHorizontalScroll": false,
+    "overflowingEls": [
+      {
+        "tag": "BUTTON",
+        "className": "inline-flex items-center"
+      },
+      {
+        "tag": "BUTTON",
+        "className": "inline-flex items-center"
+      },
+      {
+        "tag": "svg",
+        "className": "[object SVGAnimatedString]"
+      },
+      {
+        "tag": "path",
+        "className": "[object SVGAnimatedString]"
+      },
+      {
+        "tag": "path",
+        "className": "[object SVGAnimatedString]"
+      },
+      {
+        "tag": "path",
+        "className": "[object SVGAnimatedString]"
+      },
+      {
+        "tag": "path",
+        "className": "[object SVGAnimatedString]"
+      },
+      {
+        "tag": "path",
+        "className": "[object SVGAnimatedString]"
+      },
+      {
+        "tag": "svg",
+        "className": "[object SVGAnimatedString]"
+      },
+      {
+        "tag": "path",
+        "className": "[object SVGAnimatedString]"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "text": "뒤로가기",
+        "width": 36,
+        "height": 36
+      },
+      {
+        "tag": "BUTTON",
+        "text": "LexDiff",
+        "width": 32,
+        "height": 32
+      },
+      {
+        "tag": "BUTTON",
+        "text": "관세법 제38조",
+        "width": 131,
+        "height": 36
+      },
+      {
+        "tag": "BUTTON",
+        "text": "다크 모드로 전환",
+        "width": 16,
+        "height": 16
+      },
+      {
+        "tag": "BUTTON",
+        "text": "사용법 안내",
+        "width": 32,
+        "height": 32
+      },
+      {
+        "tag": "BUTTON",
+        "text": "설정",
+        "width": 36,
+        "height": 36
+      },
+      {
+        "tag": "BUTTON",
+        "text": "신·구법 비교비교",
+        "width": 68,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "AI 요약요약",
+        "width": 68,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "원문 보기원문",
+        "width": 68,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "위임법령위임",
+        "width": 68,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "판례판례",
+        "width": 68,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "분석2",
+        "width": 89,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "최신 정보로 새로고침",
+        "width": 28,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "즐겨찾기 추가",
+        "width": 28,
+        "height": 28
+      },
+      {
+        "tag": "BUTTON",
+        "text": "글자 작게",
+        "width": 28,
+        "height": 28
+      }
+    ],
+    "activeAnimations": [
+      {
+        "duration": 2000,
+        "iterations": null
+      },
+      {
+        "duration": 2000,
+        "iterations": null
+      }
+    ],
+    "infiniteAnimations": 2,
+    "longTransitionCount": 0,
+    "hasReducedMotionRule": false
+  },
+  "resultText": "LexDiff\n관세법 제38조\n검색\n조문 목록\n423개 조문\n제35조\n(합리적 기준에 따른 과세가격의 결정)\n제36조\n(과세가격 결정방법 등의 통보)\n제37조\n(과세가격 결정방법의 사전심사)\n제37조의2\n(관세의 과세가격 결정방법과 국세의 정상가격 산출방법의 사전조정)\n제37조의3\n(관세의 부과 등을 위한 정보제공)\n제37조의4\n(특수관계자의 수입물품 과세가격결정자료등 제출)\n제38조\n(신고납부)\n제38조의2\n(보정)\n제38조의3\n(수정 및 경정)\n제38조의4\n(수입물품의 과세가격 조정에 따른 경정)\n제38조의5\n(경정청구서 등 우편제출에 따른 특례)\n제39조\n(부과고지)\n제40조\n(징수금액의 최저한)\n제41조\n삭제된 조문\n제42조\n(가산세)\n제42조의2\n(가산세의 감면)\n제43조\n(관세의 현장 수납)\n제43조의2\n(압류ㆍ매각의 유예)\n제44조\n(체납자료의 제공)\n제45조\n(관세체납정리위원회)\n제46조\n(관세환급금의 환급)\n제47조\n(과다환급관세의 징수)\n제48조\n(관세환급가산금)\n제49조\n(세율의 종류)\n제50조\n(세율 적용의 우선순위)\n제51조\n(덤핑방지관세의 부과대상)\n관세법\n2026-02-01\n423개 조문\n타법개정\n신·구법 비교\nAI 요약\n원문 보기\n위임법령\n판례\n분석\n2\n즐겨찾기\n제38조(신고납부)\n법률\n15px\n① 물품(제39조에 따라 세관장이 부과고지하는 물품은 제외한다)을 수입하려는 자는 수입신고를 할 때에 세관장에게 관세의 납부에 관한 신고(이하 \"납세신고\"라 한다)를 하여야 한다.\n② 세관장은 납세신고를 받으면 수입신고서에 기재된 사항과 이 법에 따른 확인사항 등을 심사하되, 신고한 세액 등 납세신고 내용에 대한 심사(이하 \"세액심사\"라 한다)는 수입신고를 수리한 후에 한다. 다만, 신고한 세액에 대하여 관세채권을 확보하기가 곤란하거나, 수입신고를 수리한 후 세액심사를 하는 것이 적당하지 아니하다고 인정하여 재정경제부령으로 정하는 물품의 경우에는 수입신고를 수리하기 전에 이를 심사한다. ＜개정 2023.12.31, 2025.10.1＞\n③ 세관장은 세액심사를 할 때 제1항에 따라 제출된 신고서나 그 밖의 서류에 미비한 점이 있거나 오류가 있는 경우에는 보완할 것을 요구할 수 있다. ＜신설 2024.12.31＞\n④ 세관장은 제2항 본문에도 불구하고 납세실적과 수입규모 등을 고려하여 관세청장이 정하는 요건을 갖춘 자가 신청할 때에는 납세신고한 세액을 자체적으로 심사(이하 \"자율심사\"라 한다)하게 할 수 있다. 이 경우 해당 납세의무자는 자율심사한 결과를 세관장에게 제출하여야 한다. ＜개정 2024.12.31＞\n⑤ 납세의무자는 납세신고한 세액을 납부하기 전에 그 세액이 과부족(過不足)하다는 것을 알게 되었을 때에는 납세신고한 세액을 정정할 수 있다. 이 경우 납부기한은 당초의 납부기한(제9조에 따른 납부기한을 말한다)으로 한다. ＜개정 2024.12.31＞\n⑥ 납세신고, 자율심사 및 제5항에 따른 세액의 정정과 관련하여 그 방법 및 절차 등 필요한 사항은 대통령령으로 정한다. ＜개정 2024.12.31＞\n⑦ 관세의 납부에 관하여는 「국세징수법」 제12조제1항제3호, 같은 조 제2항 및 제3항을 준용한다. ＜개정 2020.12.22, 2024.12.31＞\n개정 이력\n29건\n조문 목록\n조문 목록\n📖\n법령 검색 빠른 가이드\n검색: \"민법\", \"관세법 38조\"\n탐색: 좌측 목록 클릭, Ctrl+K\n즐겨찾기: 별 아이콘 클릭\n비교: 개정 전후 변경 확인\n링크: 참조 법령 바로가기\n자세히 보기",
+  "mobileResultText": "관세법 제38조\n423\n관세법\n2026-02-01\n423개 조문\n타법개정\n비교\n요약\n원문\n위임\n판례\n2\n제38조(신고납부)\n① 물품(제39조에 따라 세관장이 부과고지하는 물품은 제외한다)을 수입하려는 자는 수입신고를 할 때에 세관장에게 관세의 납부에 관한 신고(이하 \"납세신고\"라 한다)를 하여야 한다.\n② 세관장은 납세신고를 받으면 수입신고서에 기재된 사항과 이 법에 따른 확인사항 등을 심사하되, 신고한 세액 등 납세신고 내용에 대한 심사(이하 \"세액심사\"라 한다)는 수입신고를 수리한 후에 한다. 다만, 신고한 세액에 대하여 관세채권을 확보하기가 곤란하거나, 수입신고를 수리한 후 세액심사를 하는 것이 적당하지 아니하다고 인정하여 재정경제부령으로 정하는 물품의 경우에는 수입신고를 수리하기 전에 이를 심사한다. ＜개정 2023.12.31, 2025.10.1＞\n③ 세관장은 세액심사를 할 때 제1항에 따라 제출된 신고서나 그 밖의 서류에 미비한 점이 있거나 오류가 있는 경우에는 보완할 것을 요구할 수 있다. ＜신설 2024.12.31＞\n④ 세관장은 제2항 본문에도 불구하고 납세실적과 수입규모 등을 고려하여 관세청장이 정하는 요건을 갖춘 자가 신청할 때에는 납세신고한 세액을 자체적으로 심사(이하 \"자율심사\"라 한다)하게 할 수 있다. 이 경우 해당 납세의무자는 자율심사한 결과를 세관장에게 제출하여야 한다. ＜개정 2024.12.31＞\n⑤ 납세의무자는 납세신고한 세액을 납부하기 전에 그 세액이 과부족(過不足)하다는 것을 알게 되었을 때에는 납세신고한 세액을 정정할 수 있다. 이 경우 납부기한은 당초의 납부기한(제9조에 따른 납부기한을 말한다)으로 한다. ＜개정 2024.12.31＞\n⑥ 납세신고, 자율심사 및 제5항에 따른 세액의 정정과 관련하여 그 방법 및 절차 등 필요한 사항은 대통령령으로 정한다. ＜개정 2024.12.31＞\n⑦ 관세의 납부에 관하여는 「국세징수법」 제12조제1항제3호, 같은 조 제2항 및 제3항을 준용한다. ＜개정 2020.12.22, 2024.12.31＞\n개정 이력\n29건\n조문 간 이동 방법\n\n좌우로 스와이프\n\n이전/다음 조문\n\n왼쪽 스와이프: 다음 조문\n오른쪽 스와이프: 이전 조문\n확인 (다시 보지 않기)\n닫기\n조문 목록\n조문 목록\n📖\n법령 검색 빠른 가이드\n검색: \"민법\", \"관세법 38조\"\n탐색: 좌측 목록 클릭, Ctrl+K\n즐겨찾기: 별 아이콘 클릭\n비교: 개정 전후 변경 확인\n링크: 참조 법령 바로가기\n자세히 보기",
+  "events": [
+    {
+      "phase": "desktop",
+      "type": "console:info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[HMR] connected"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[admin-rule-cache] Upgrade v0 → v12"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[admin-rule-cache] Created store: lawAdminRulesPurposeCache"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[admin-rule-cache] Created store: articleMatchIndexCache"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[admin-rule-cache] Created store: adminRulesContentCache"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:error",
+      "text": "Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-inline'\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked."
+    },
+    {
+      "phase": "desktop",
+      "type": "requestfailed",
+      "text": "GET https://va.vercel-scripts.com/v1/script.debug.js :: csp"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[Vercel Web Analytics] Failed to load script from https://va.vercel-scripts.com/v1/script.debug.js. Please check if any ad blockers are enabled and try again."
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] SearchBar 통합 검색 분류 {query: 관세법 38조, classification: Object}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 파싱 시작 {query: 관세법 38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 정규화 {input: 관세법 38조, normalized: 관세법 38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 법령 약칭 매핑 {input: 관세법, canonical: 관세법, matchedAlias: 관세벚}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 조문 컴포넌트 파싱 {input: 38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] JO 파싱 시작 {input: 제38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 조문 컴포넌트 파싱 {input: 제38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] 통합 검색 실행 {lawName: 관세법, article: 제38조, jo: 003800}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] 🔍 검색 시작 {lawName: 관세법, article: 제38조, jo: 003800, searchType: law, classification: Object}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[SUCCESS] ✅ 검색 ID 생성 {searchId: search-1774017179653-g9ns1c}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] 📦 IndexedDB에서 데이터 복원 {query: Object, hasLawData: false, hasPrecedentDetail: false, initialPrecedentId: null}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] 📡 lawData 없음 - 검색 시작 {lawName: 관세법, article: 제38조, jo: 003800, searchType: law, classification: Object}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] 🔍 검색 쿼리 업데이트 {fullQuery: 관세법 제38조, forcedMode: undefined}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] ✅ 통합검색: 사전 분류 결과 사용 {searchType: law, confidence: 0.98}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] ✅ 사전 분류 고신뢰 → 재감지 스킵 {searchType: law}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] 법령 검색 시작 {lawName: 관세법, classifiedType: law}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 정규화 {input: 관세법 제38조, normalized: 관세법 제38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 파싱 시작 {query: 관세법 제38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 정규화 {input: 관세법 제38조, normalized: 관세법 제38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 법령 약칭 매핑 {input: 관세법, canonical: 관세법, matchedAlias: 관세벚}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 조문 컴포넌트 파싱 {input: 제38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] JO 파싱 시작 {input: 제38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 조문 컴포넌트 파싱 {input: 제38조}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 법령 약칭 매핑 {input: 관세법, canonical: 관세법, matchedAlias: 관세벚}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "🔍 [Phase 7] 캐시 조회 (검색어): \"관세법 제38조\""
+    },
+    {
+      "phase": "desktop",
+      "type": "console:error",
+      "text": "❌ 캐시 조회 실패 (검색어): VersionError: The requested version (11) is less than the existing version (12)."
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[law-search] \"관세법\" → 11건"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 정규화 {input: 관세법, normalized: 관세법}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] 법령 ID 확인 {lawId: 001556, lawName: 관세법}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:error",
+      "text": "❌ 캐시 조회 실패: VersionError: The requested version (11) is less than the existing version (12)."
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[INFO] 📄 법령 전문 조회 중 (eflaw API) {lawId: 001556}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[SUCCESS] 💾 법령 본문 캐시 저장 완료 {lawTitle: 관세법, effectiveDate: 20260201}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[SUCCESS] ✅ 법령 본문 로드 완료 (eflaw API) {lawTitle: 관세법, articleCount: 423}"
+    },
+    {
+      "phase": "desktop",
+      "type": "console:warning",
+      "text": "⚠️ IndexedDB version mismatch detected. Cache will be rebuilt on next access."
+    },
+    {
+      "phase": "desktop",
+      "type": "console:log",
+      "text": "[SUCCESS] 💾 lawData + query를 IndexedDB에 저장 완료 {searchId: search-1774017179653-g9ns1c, lawTitle: 관세법, query: Object}"
+    },
+    {
+      "phase": "desktop",
+      "type": "requestfailed",
+      "text": "GET http://localhost:3000/api/article-history?lawId=001556&jo=003800 :: net::ERR_ABORTED"
+    },
+    {
+      "phase": "desktop",
+      "type": "requestfailed",
+      "text": "GET http://localhost:3000/api/article-history?lawId=001556&jo=003800 :: net::ERR_ABORTED"
+    },
+    {
+      "phase": "desktop",
+      "type": "requestfailed",
+      "text": "GET http://localhost:3000/api/article-history?lawId=001556&jo=003800 :: net::ERR_ABORTED"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[HMR] connected"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[admin-rule-cache] Upgrade v0 → v12"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[admin-rule-cache] Created store: lawAdminRulesPurposeCache"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[admin-rule-cache] Created store: articleMatchIndexCache"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[admin-rule-cache] Created store: adminRulesContentCache"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:error",
+      "text": "Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-inline'\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked."
+    },
+    {
+      "phase": "mobile",
+      "type": "requestfailed",
+      "text": "GET https://va.vercel-scripts.com/v1/script.debug.js :: csp"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[Vercel Web Analytics] Failed to load script from https://va.vercel-scripts.com/v1/script.debug.js. Please check if any ad blockers are enabled and try again."
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] SearchBar 통합 검색 분류 {query: 관세법 38조, classification: Object}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 파싱 시작 {query: 관세법 38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 정규화 {input: 관세법 38조, normalized: 관세법 38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 법령 약칭 매핑 {input: 관세법, canonical: 관세법, matchedAlias: 관세벚}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 조문 컴포넌트 파싱 {input: 38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] JO 파싱 시작 {input: 제38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 조문 컴포넌트 파싱 {input: 제38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] 통합 검색 실행 {lawName: 관세법, article: 제38조, jo: 003800}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] 🔍 검색 시작 {lawName: 관세법, article: 제38조, jo: 003800, searchType: law, classification: Object}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[SUCCESS] ✅ 검색 ID 생성 {searchId: search-1774017187366-8w3jlc}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] 📦 IndexedDB에서 데이터 복원 {query: Object, hasLawData: false, hasPrecedentDetail: false, initialPrecedentId: null}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] 📡 lawData 없음 - 검색 시작 {lawName: 관세법, article: 제38조, jo: 003800, searchType: law, classification: Object}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] 🔍 검색 쿼리 업데이트 {fullQuery: 관세법 제38조, forcedMode: undefined}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] ✅ 통합검색: 사전 분류 결과 사용 {searchType: law, confidence: 0.98}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] ✅ 사전 분류 고신뢰 → 재감지 스킵 {searchType: law}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] 법령 검색 시작 {lawName: 관세법, classifiedType: law}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 정규화 {input: 관세법 제38조, normalized: 관세법 제38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 파싱 시작 {query: 관세법 제38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 정규화 {input: 관세법 제38조, normalized: 관세법 제38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 법령 약칭 매핑 {input: 관세법, canonical: 관세법, matchedAlias: 관세벚}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 조문 컴포넌트 파싱 {input: 제38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] JO 파싱 시작 {input: 제38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 조문 컴포넌트 파싱 {input: 제38조}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 법령 약칭 매핑 {input: 관세법, canonical: 관세법, matchedAlias: 관세벚}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "🔍 [Phase 7] 캐시 조회 (검색어): \"관세법 제38조\""
+    },
+    {
+      "phase": "mobile",
+      "type": "console:error",
+      "text": "❌ 캐시 조회 실패 (검색어): VersionError: The requested version (11) is less than the existing version (12)."
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[law-search] \"관세법\" → 11건"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[DEBUG] 검색어 정규화 {input: 관세법, normalized: 관세법}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] 법령 ID 확인 {lawId: 001556, lawName: 관세법}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:error",
+      "text": "❌ 캐시 조회 실패: VersionError: The requested version (11) is less than the existing version (12)."
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[INFO] 📄 법령 전문 조회 중 (eflaw API) {lawId: 001556}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[SUCCESS] 💾 법령 본문 캐시 저장 완료 {lawTitle: 관세법, effectiveDate: 20260201}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[SUCCESS] ✅ 법령 본문 로드 완료 (eflaw API) {lawTitle: 관세법, articleCount: 423}"
+    },
+    {
+      "phase": "mobile",
+      "type": "console:warning",
+      "text": "⚠️ IndexedDB version mismatch detected. Cache will be rebuilt on next access."
+    },
+    {
+      "phase": "mobile",
+      "type": "console:log",
+      "text": "[SUCCESS] 💾 lawData + query를 IndexedDB에 저장 완료 {searchId: search-1774017187366-8w3jlc, lawTitle: 관세법, query: Object}"
+    },
+    {
+      "phase": "mobile",
+      "type": "requestfailed",
+      "text": "GET http://localhost:3000/api/article-history?lawId=001556&jo=003800 :: net::ERR_ABORTED"
+    },
+    {
+      "phase": "mobile",
+      "type": "requestfailed",
+      "text": "GET http://localhost:3000/api/article-history?lawId=001556&jo=003800 :: net::ERR_ABORTED"
+    },
+    {
+      "phase": "mobile",
+      "type": "requestfailed",
+      "text": "GET http://localhost:3000/api/article-history?lawId=001556&jo=003800 :: net::ERR_ABORTED"
+    }
+  ]
+}
