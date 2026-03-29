@@ -95,8 +95,10 @@ export function useAiSearch(deps: HandlerDeps) {
         actions.setIsSearching(false)
         actions.updateProgress('complete', 0)
 
-        // 게이트 다이얼로그 트리거 (page.tsx의 useAiGate가 수신)
-        window.dispatchEvent(new CustomEvent('lexdiff:ai-gate-required'))
+        // 게이트 다이얼로그 트리거 (page.tsx의 useAiGate가 수신, 인증 후 자동 재검색)
+        window.dispatchEvent(new CustomEvent('lexdiff:ai-gate-required', {
+          detail: { query: fullQuery }
+        }))
         return
       }
     } catch { /* private browsing */ }

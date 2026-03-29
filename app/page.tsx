@@ -9,7 +9,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { SearchView } from "@/components/search-view"
 import { SearchResultView } from "@/components/search-result-view"
@@ -96,12 +96,15 @@ export default function Home() {
   // AI 비밀번호 게이트
   const { showGate, requireAuth, handleSubmit: handleGateSubmit, handleClose: handleGateClose } = useAiGate()
 
+  // AI 게이트: 인증 후 재검색용 쿼리
+  const gateRetryQueryRef = useRef<string | null>(null)
+
   // AI 게이트 이벤트 수신 (useAiSearch에서 게이트 미인증 시 발송)
   useEffect(() => {
-    const handler = () => {
-      requireAuth(() => {
-        // 인증 완료 후 사용자가 직접 재검색하도록 (자동 재검색은 복잡도 대비 효용 낮음)
-      })
+    const handler = (e: Event) => {
+      const query = (e as CustomEvent).detail?.query as string | undefined
+      gateRetryQueryRef.current = query || null
+      requireAuth(() => { /* handleGateSuccess에서 처리 */ })
     }
     window.addEventListener('lexdiff:ai-gate-required', handler)
     return () => window.removeEventListener('lexdiff:ai-gate-required', handler)
@@ -235,6 +238,18 @@ export default function Home() {
       debugLogger.error('❌ 검색 실패', error)
       setIsSearching(false)
     }
+  }
+
+  // AI 게이트 인증 성공 래퍼 (인증 후 자동 재검색)
+  const handleGateSubmitWithRetry = (pin: string): boolean => {
+    const result = handleGateSubmit(pin)
+    if (result && gateRetryQueryRef.current) {
+      const query = gateRetryQueryRef.current
+      gateRetryQueryRef.current = null
+      // 다음 틱에서 검색 실행 (게이트 다이얼로그 닫힌 후)
+      setTimeout(() => handleSearch({ lawName: query }), 0)
+    }
+    return result
   }
 
   // 즐겨찾기 선택 핸들러
@@ -461,7 +476,7 @@ export default function Home() {
       {/* AI 비밀번호 게이트 */}
       <AiGateDialog
         open={showGate}
-        onSubmit={handleGateSubmit}
+        onSubmit={handleGateSubmitWithRetry}
         onClose={handleGateClose}
       />
     </>
