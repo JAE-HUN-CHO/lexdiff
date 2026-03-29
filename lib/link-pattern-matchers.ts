@@ -552,6 +552,12 @@ function extractLawNameBeforeAnnex(text: string, annexIndex: number): string | u
       if (/다\.\s|[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]/.test(between)) {
         return undefined
       }
+      // 위임 근거 체크: 「법명」과 별표 사이에 "제X조" 조문 참조가 있으면
+      // 시행령에서 모법을 인용한 것이고, 별표는 현재 법령(시행령)의 것
+      // 예: 「지방공무원법」 제X조에 따른 별표 1 → 별표는 시행령 소속
+      if (/제\d+조/.test(between)) {
+        return undefined
+      }
       return lastMatch[1]
     }
   }

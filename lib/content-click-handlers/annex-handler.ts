@@ -31,7 +31,24 @@ export async function handleAnnexRef(
   // 2. refModal.lawName (모달에서 현재 보고 있는 법령)
   // 3. meta.lawTitle (법령 뷰어에서 보고 있는 법령)
   const dataLaw = target.getAttribute('data-law')
-  const lawName = dataLaw || refModal?.lawName || meta.lawTitle
+  const currentLaw = refModal?.lawName || meta.lawTitle
+
+  // 시행령/시행규칙에서 모법명이 data-law로 잡힌 경우 보정
+  // 예: 현재 "지방공무원법 시행령"인데 data-law="지방공무원법" → 시행령의 별표가 맞음
+  let lawName: string | undefined
+  if (dataLaw && currentLaw && dataLaw !== currentLaw) {
+    const isCurrentDecree = /\s*(시행령|시행규칙)/.test(currentLaw)
+    const parentLawName = currentLaw.replace(/\s*(시행령|시행규칙)$/, '')
+    if (isCurrentDecree && dataLaw === parentLawName) {
+      // 모법명이 추출된 것이므로, 현재 시행령의 별표로 간주
+      debugLogger.info('[annex-handler] 모법 → 시행령 보정', { dataLaw, currentLaw })
+      lawName = currentLaw
+    } else {
+      lawName = dataLaw
+    }
+  } else {
+    lawName = dataLaw || currentLaw
+  }
 
   // 법령명이 없거나 빈 문자열이면 경고
   if (!lawName || lawName.trim() === '' || lawName === 'AI 답변') {
