@@ -512,7 +512,10 @@ export function AIAnswerContent({
                                 <>
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">AI 분석 진행 중</span>
-                                        <span className="text-sm font-medium text-gray-500 tabular-nums">{Math.round(searchProgress)}%</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-mono tabular-nums text-muted-foreground">{streamElapsed.toFixed(1)}초</span>
+                                            <span className="text-sm font-medium text-gray-500 tabular-nums">{Math.round(searchProgress)}%</span>
+                                        </div>
                                     </div>
                                     <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-4">
                                         <div
