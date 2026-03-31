@@ -9,9 +9,7 @@
 
 import { execFile, spawn } from 'child_process'
 import { createInterface } from 'readline'
-import { readFileSync } from 'fs'
 import { join } from 'path'
-import { homedir } from 'os'
 import { debugLogger } from '../debug-logger'
 
 export const CLAUDE_MODEL = 'claude-sonnet-4-6'
@@ -22,29 +20,9 @@ const CLAUDE_BIN = process.env.CLAUDE_CLI_PATH || 'claude'
 // korean-law MCP만 로드하는 전용 설정 (context7, sequential-thinking 등 불필요 서버 차단)
 const MCP_CONFIG_PATH = join(process.cwd(), 'lib', 'fc-rag', 'claude-mcp-config.json')
 
-// ── OAuth 토큰 캐시 (readFileSync 매 요청 방지) ──
-let _cachedOAuthToken: string | null = null
-let _tokenCachedAt = 0
-const TOKEN_CACHE_TTL = 60_000 // 1분
-
-function getOAuthToken(): string {
-  const now = Date.now()
-  if (_cachedOAuthToken && now - _tokenCachedAt < TOKEN_CACHE_TTL) {
-    return _cachedOAuthToken
-  }
-  try {
-    const credPath = join(homedir(), '.claude', '.credentials.json')
-    const creds = JSON.parse(readFileSync(credPath, 'utf8'))
-    const token = creds?.claudeAiOauth?.accessToken
-    if (!token) throw new Error('accessToken 없음')
-    _cachedOAuthToken = token
-    _tokenCachedAt = now
-    return token
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    throw new Error(`OAuth 토큰 읽기 실패 (${msg}) — claude setup-token으로 갱신 필요`)
-  }
-}
+// apiKeyHelper 스크립트 경로 — --bare 모드에서 OAuth 토큰을 자동으로 읽어줌
+// cron이 주기적으로 비-bare claude를 실행하여 .credentials.json의 access token을 refresh
+const API_KEY_HELPER_PATH = join(process.cwd(), 'lib', 'fc-rag', 'get-claude-token.sh')
 
 // ── 자식 프로세스 환경변수 화이트리스트 (불필요한 시크릿 전달 방지) ──
 const SUBPROCESS_ENV_WHITELIST = [
@@ -101,11 +79,12 @@ export async function callAnthropic(
     '--output-format', 'json',
     '--no-session-persistence',
     '--max-turns', '20',
+    '--settings', JSON.stringify({ apiKeyHelper: `bash ${API_KEY_HELPER_PATH}` }),
     '--system-prompt', systemPrompt,
     '--', prompt,
   ]
 
-  const env = getSubprocessEnv({ ANTHROPIC_API_KEY: getOAuthToken() })
+  const env = getSubprocessEnv()
 
   debugLogger.debug(`[claude-cli] calling ${CLAUDE_MODEL}, prompt: ${prompt.length} chars, system: ${systemPrompt.length} chars`)
 
@@ -232,11 +211,12 @@ export async function* callAnthropicStream(
     '--mcp-config', MCP_CONFIG_PATH,
     '--strict-mcp-config',
     '--disallowed-tools', 'ToolSearch,Bash,Read,Edit,Write,Glob,Grep',
+    '--settings', JSON.stringify({ apiKeyHelper: `bash ${API_KEY_HELPER_PATH}` }),
     '--system-prompt', systemPrompt,
     '--', prompt,
   ]
 
-  const env = getSubprocessEnv({ ANTHROPIC_API_KEY: getOAuthToken() })
+  const env = getSubprocessEnv()
 
   debugLogger.debug(`[claude-cli] streaming ${CLAUDE_MODEL}, prompt: ${prompt.length} chars`)
 
