@@ -46,11 +46,13 @@ async function pdfFallback(buffer: ArrayBuffer): Promise<ParseResult> {
 // ─── 메인 엔트리 ─────────────────────────────────────
 
 export async function parseAnnexFile(buffer: ArrayBuffer): Promise<AnnexParseResult> {
+  // kordoc가 buffer를 detach할 수 있으므로 fallback용 복사본 보관
+  const bufferCopy = buffer.slice(0)
   const result = await parse(buffer)
   // kordoc PDF 파싱 실패 시 pdfjs-dist 직접 추출로 fallback
   if (!result.success && result.fileType === "pdf" && !result.isImageBased) {
     try {
-      return await pdfFallback(buffer)
+      return await pdfFallback(bufferCopy)
     } catch (fallbackErr) {
       const msg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
       return { ...result, error: `${result.error} [fallback: ${msg}]` } as ParseResult
