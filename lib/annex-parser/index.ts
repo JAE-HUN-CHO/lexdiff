@@ -11,6 +11,8 @@ import { parse, isHwpxFile, isOldHwpFile, isPdfFile } from "kordoc"
 import type { ParseResult } from "kordoc"
 // polyfill 먼저 (ES 모듈 호이스팅되므로 별도 파일로 분리)
 import "./pdf-polyfill"
+// kordoc PDF 파싱 실패 시 직접 텍스트 추출용 (static import — Turbopack 호환)
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
 
 // ─── 타입 re-export ─────────────────────────────────
 
@@ -21,7 +23,6 @@ export { isHwpxFile, isOldHwpFile, isPdfFile }
 // ─── pdfjs-dist 직접 텍스트 추출 (kordoc 실패 시 fallback) ──
 
 async function pdfFallback(buffer: ArrayBuffer): Promise<ParseResult> {
-  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs")
   const doc = await getDocument({ data: new Uint8Array(buffer) }).promise
   const lines: string[] = []
 
