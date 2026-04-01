@@ -78,7 +78,45 @@ if [ $? -eq 0 ] && [ -n "$NEW_TOKEN" ]; then
   echo "$NEW_TOKEN"
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] apiKeyHelper: token refreshed via OAuth" >> "$HOME/.claude/token-refresh.log"
 else
-  # refresh 실패 — 기존 토큰 반환 (아직 유효할 수 있음)
-  echo "$ACCESS_TOKEN"
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] apiKeyHelper: refresh failed, using existing token (${REMAINING_MS}ms left)" >> "$HOME/.claude/token-refresh.log"
+  # 1차 실패 — 5초 후 재시도
+  sleep 5
+  RESPONSE2=$(curl -s --max-time 15 -X POST "$TOKEN_URL" \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    --data-urlencode "grant_type=refresh_token" \
+    --data-urlencode "refresh_token=${REFRESH_TOKEN}" \
+    --data-urlencode "client_id=${CLIENT_ID}" 2>/dev/null)
+
+  NEW_TOKEN2=$(echo "$RESPONSE2" | python3 -c "
+import sys, json, time
+try:
+    r = json.load(sys.stdin)
+    if 'access_token' not in r:
+        sys.exit(1)
+    new_access = r['access_token']
+    expires_in = r.get('expires_in', 28800)
+    new_refresh = r.get('refresh_token', '')
+    creds = json.load(open('$CRED_FILE'))
+    creds['claudeAiOauth']['accessToken'] = new_access
+    creds['claudeAiOauth']['expiresAt'] = int(time.time()*1000) + expires_in * 1000
+    if new_refresh:
+        creds['claudeAiOauth']['refreshToken'] = new_refresh
+    json.dump(creds, open('$CRED_FILE', 'w'))
+    print(new_access)
+except:
+    sys.exit(1)
+" 2>/dev/null)
+
+  if [ $? -eq 0 ] && [ -n "$NEW_TOKEN2" ]; then
+    echo "$NEW_TOKEN2"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] apiKeyHelper: token refreshed via OAuth (retry)" >> "$HOME/.claude/token-refresh.log"
+  elif [ "$REMAINING_MS" -gt 0 ]; then
+    # 토큰 아직 유효 — 기존 토큰 반환
+    echo "$ACCESS_TOKEN"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] apiKeyHelper: refresh failed, using existing token (${REMAINING_MS}ms left)" >> "$HOME/.claude/token-refresh.log"
+  else
+    # 토큰 만료됨 — 만료 토큰 반환하지 않고 에러
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] apiKeyHelper: EXPIRED token, refresh failed (${REMAINING_MS}ms)" >> "$HOME/.claude/token-refresh.log"
+    echo "TOKEN_EXPIRED" >&2
+    exit 1
+  fi
 fi

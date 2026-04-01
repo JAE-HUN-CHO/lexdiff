@@ -50,6 +50,42 @@ except Exception as e:
 " "$CRED_FILE" 2>&1)
 
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $RESULT" >> "$LOG_FILE"
+
+  # rate limit 또는 실패 시 60초 후 1회 재시도
+  if echo "$RESULT" | grep -qE "FAIL|rate_limit"; then
+    sleep 60
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] retrying after rate limit..." >> "$LOG_FILE"
+
+    REFRESH_TOKEN=$(python3 -c "import json; print(json.load(open('$CRED_FILE'))['claudeAiOauth']['refreshToken'])" 2>/dev/null)
+
+    RESPONSE2=$(curl -s --max-time 15 -X POST "$TOKEN_URL" \
+      -H 'Content-Type: application/x-www-form-urlencoded' \
+      --data-urlencode "grant_type=refresh_token" \
+      --data-urlencode "refresh_token=${REFRESH_TOKEN}" \
+      --data-urlencode "client_id=${CLIENT_ID}" 2>/dev/null)
+
+    RESULT2=$(echo "$RESPONSE2" | python3 -c "
+import json, time, sys
+try:
+    r = json.load(sys.stdin)
+    if 'access_token' not in r:
+        print(f'FAIL: {r.get(\"error\",{}).get(\"type\",\"unknown\")}')
+        sys.exit(1)
+    creds = json.load(open(sys.argv[1]))
+    creds['claudeAiOauth']['accessToken'] = r['access_token']
+    creds['claudeAiOauth']['expiresAt'] = int(time.time()*1000) + r.get('expires_in', 28800) * 1000
+    if 'refresh_token' in r:
+        creds['claudeAiOauth']['refreshToken'] = r['refresh_token']
+    json.dump(creds, open(sys.argv[1], 'w'))
+    remaining_h = r.get('expires_in', 28800) / 3600
+    print(f'OK: new token valid for {remaining_h:.1f}h')
+except Exception as e:
+    print(f'FAIL: {e}')
+    sys.exit(1)
+" "$CRED_FILE" 2>&1)
+
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] retry: $RESULT2" >> "$LOG_FILE"
+  fi
 else
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] token still valid, skipping refresh" >> "$LOG_FILE"
 fi
