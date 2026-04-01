@@ -83,6 +83,10 @@ export async function GET(request: Request) {
       responseContentType = "application/pdf"
       disposition = "inline"
       ext = ".pdf"
+    } else if (isHwpx) {
+      responseContentType = "application/hwp+zip"
+      disposition = "attachment"
+      ext = ".hwpx"
     } else if (isHwp) {
       responseContentType = "application/hwp+zip"
       disposition = "attachment"

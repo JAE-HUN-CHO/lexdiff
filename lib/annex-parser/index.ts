@@ -13,6 +13,8 @@ import type { ParseResult } from "kordoc"
 import "./pdf-polyfill"
 // kordoc PDF 파싱 실패 시 직접 텍스트 추출용 (static import — Turbopack 호환)
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
+// kordoc HWPX 파싱 품질이 낮을 때 (헤딩만 나오는 경우) MCP 파서로 fallback
+import { parseHwpxDocument } from "./hwpx-parser"
 
 // ─── 타입 re-export ─────────────────────────────────
 
@@ -45,10 +47,33 @@ async function pdfFallback(buffer: ArrayBuffer): Promise<ParseResult> {
 
 // ─── 메인 엔트리 ─────────────────────────────────────
 
+/** kordoc 결과가 헤딩만 나오는 품질 불량인지 판별 */
+function isLowQualityHwpx(result: ParseResult): boolean {
+  if (!result.success || result.fileType !== "hwpx") return false
+  const md = result.markdown
+  // 헤딩(## [별표)만 있고 본문이 거의 없으면 품질 불량
+  const headingCount = (md.match(/^## \[별표/gm) || []).length
+  const nonHeadingLines = md.split("\n").filter(l => l.trim() && !l.startsWith("## "))
+  return headingCount >= 2 && nonHeadingLines.length < headingCount * 2
+}
+
 export async function parseAnnexFile(buffer: ArrayBuffer): Promise<AnnexParseResult> {
   // kordoc가 buffer를 detach할 수 있으므로 fallback용 복사본 보관
   const bufferCopy = buffer.slice(0)
   const result = await parse(buffer)
+
+  // kordoc HWPX 파싱 품질 불량 시 MCP 파서로 fallback
+  if (isLowQualityHwpx(result)) {
+    try {
+      const markdown = await parseHwpxDocument(bufferCopy)
+      if (markdown && result.success && markdown.length > result.markdown.length) {
+        return { success: true, fileType: "hwpx", markdown, blocks: [] }
+      }
+    } catch {
+      // fallback 실패 시 kordoc 결과 그대로 사용
+    }
+  }
+
   // kordoc PDF 파싱 실패 시 pdfjs-dist 직접 추출로 fallback
   if (!result.success && result.fileType === "pdf" && !result.isImageBased) {
     try {
