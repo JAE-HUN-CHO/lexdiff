@@ -5,9 +5,9 @@
  * 법제처 API 실시간 데이터 기반 답변 생성.
  *
  * ── LLM 구성 ──
- * Primary : Sonnet 4.6 (Claude) — CLI subprocess (stream-json 모드)
- *           로컬: claude.exe 직접 spawn / Vercel: OpenClaw Bridge 프록시
- * Fallback: Gemini Flash — Claude 불능 시 이 엔진이 직접 Gemini 호출
+ * Primary : Hermes Agent API (GPT-5.4, localhost:8642)
+ *           korean-law-mcp v3.2.1 (18도구) 네이티브 관리
+ * Fallback: Gemini Flash — Hermes 불능 시 직접 Gemini 호출
  *
  * 도구 어댑터(tool-adapter), Tier 시스템(tool-tiers), 프롬프트(prompts)는
  * 양쪽 LLM이 공유하는 인프라.
@@ -16,7 +16,7 @@
  *
  * ── 모듈 구조 ──
  * engine-shared.ts  : 타입, 설정, 유틸, 대화 컨텍스트, Fast Path, 질의 분류
- * claude-engine.ts  : Claude Primary 엔진 (CLI subprocess)
+ * claude-engine.ts  : Hermes Primary 엔진 (hermes-client.ts 호출)
  * gemini-engine.ts  : Gemini Fallback 엔진 (멀티턴 FC)
  * engine.ts (이 파일) : Re-export 허브 + 비스트리밍 래퍼
  */

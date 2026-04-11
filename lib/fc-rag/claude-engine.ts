@@ -1,6 +1,7 @@
 /**
- * FC-RAG Claude Primary 엔진
- * Claude CLI subprocess를 stream-json 모드로 spawn하여 실시간 SSE 전달.
+ * FC-RAG Primary 엔진
+ * Hermes Agent API (OpenAI-compatible, localhost:8642)를 통한 실시간 SSE 전달.
+ * GPT-5.4 + korean-law-mcp v3.2.1 (18도구).
  */
 
 import { executeTool } from './tool-adapter'
@@ -8,7 +9,7 @@ import { buildSystemPrompt } from './prompts'
 import { TOOL_DISPLAY_NAMES } from './tool-tiers'
 import { parseCitationsFromAnswer } from './citations'
 import { summarizeToolResult, getToolCallQuery } from './result-utils'
-import { callAnthropicStream, type DirectMessage } from './anthropic-client'
+import { callAnthropicStream, type DirectMessage } from './hermes-client'
 import {
   type FCRAGStreamEvent,
   type RAGStreamOptions,

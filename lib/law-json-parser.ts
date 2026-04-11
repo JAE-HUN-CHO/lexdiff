@@ -7,9 +7,14 @@ import { debugLogger } from "./debug-logger"
  */
 export function parseLawJSON(jsonData: any): LawData {
   try {
-    // API 에러 응답 체크 (eflaw가 { error: "..." } 반환하는 경우)
+    // API 에러 응답 체크
     if (jsonData?.error) {
       throw new Error(jsonData.error)
+    }
+
+    // law.go.kr이 에러 시 { Law: "일치하는 법령이 없습니다..." } 반환
+    if (typeof jsonData?.Law === 'string') {
+      throw new Error(jsonData.Law)
     }
 
     const lawData = jsonData.법령

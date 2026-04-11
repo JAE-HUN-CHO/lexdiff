@@ -118,6 +118,13 @@ function detectLawType(lawName: string): 'law' | 'ordinance' | 'admin' {
 
 const stripHtml = (str: string) => str?.replace(/<[^>]*>/g, '') || ''
 
+/**
+ * 가운뎃점 정규화 — 법제처 API는 ㆍ(U+318D)를 사용하지만
+ * 사용자/AI 입력은 ·(U+00B7), ･(U+FF65), ・(U+30FB) 등 다양
+ */
+const MIDDLE_DOT_PATTERN = /[·\u00B7\u318D\u30FB\uFF65]/g
+const normalizeDots = (str: string) => str.replace(MIDDLE_DOT_PATTERN, 'ㆍ')
+
 const ensureArray = <T,>(data: T | T[] | undefined): T[] => {
   if (!data) return []
   return Array.isArray(data) ? data : [data]
@@ -274,37 +281,36 @@ export async function GET(request: Request) {
   }
 
   try {
-    const lawType = detectLawType(query)
+    // 가운뎃점 정규화: ·(U+00B7) → ㆍ(U+318D) — 법제처 API 형식에 맞춤
+    const normalizedQuery = normalizeDots(query)
+    const lawType = detectLawType(normalizedQuery)
     const targetMap = { law: "licbyl", ordinance: "ordinbyl", admin: "admbyl" }
     const target = targetMap[lawType]
 
-    // 1차: 원래 법령명 + knd 필터
-    let annexes = await fetchAnnexesFromApi(query, target, lawType, lawType === 'law' ? knd : undefined)
-    debugLogger.info("1차 검색 결과", { query, knd, count: annexes.length })
+    // 1차: 정규화된 법령명 + knd 필터
+    let annexes = await fetchAnnexesFromApi(normalizedQuery, target, lawType, lawType === 'law' ? knd : undefined)
+    debugLogger.info("1차 검색 결과", { query: normalizedQuery, knd, count: annexes.length })
 
     // 2차: 결과 없으면 knd 필터 제거 (법제처가 "별표"를 "서식"으로 분류하는 경우 대응)
     if (annexes.length === 0 && lawType === 'law' && knd) {
-      debugLogger.info("2차 검색: knd 필터 제거", { query })
-      annexes = await fetchAnnexesFromApi(query, target, lawType)
+      debugLogger.info("2차 검색: knd 필터 제거", { query: normalizedQuery })
+      annexes = await fetchAnnexesFromApi(normalizedQuery, target, lawType)
     }
 
     // 3차: "규정" 타입 → admin(행정규칙) target으로 재시도
-    // "복무규정" 등이 대통령령(licbyl)에 없을 때 행정규칙(admbyl)에서 검색
-    if (annexes.length === 0 && lawType === 'law' && /규정/.test(query)) {
-      debugLogger.info("3차 검색: 규정 → admin target으로 재시도", { query })
-      annexes = await fetchAnnexesFromApi(query, 'admbyl', 'admin')
+    if (annexes.length === 0 && lawType === 'law' && /규정/.test(normalizedQuery)) {
+      debugLogger.info("3차 검색: 규정 → admin target으로 재시도", { query: normalizedQuery })
+      annexes = await fetchAnnexesFromApi(normalizedQuery, 'admbyl', 'admin')
     }
 
     // 4차: 모법명으로 재검색 ("여권법 시행규칙" → "여권법")
-    // 법제처 별표 API는 시행규칙/시행령을 직접 검색하면 0건인 경우가 있음
     if (annexes.length === 0) {
-      const parentName = extractParentLawName(query)
+      const parentName = extractParentLawName(normalizedQuery)
       if (parentName) {
-        debugLogger.info("4차 검색: 모법명으로 재검색", { parentName, originalQuery: query })
+        debugLogger.info("4차 검색: 모법명으로 재검색", { parentName, originalQuery: normalizedQuery })
         const allAnnexes = await fetchAnnexesFromApi(parentName, target, lawType)
-        // 원래 법령명과 일치하는 것만 필터링
-        annexes = allAnnexes.filter(a => a.lawName === query)
-        // 필터 후에도 없으면 모법명 결과 전체 반환 (관련 법령 전체 별표)
+        // 법령명 비교도 정규화해서 매칭
+        annexes = allAnnexes.filter(a => normalizeDots(a.lawName) === normalizedQuery)
         if (annexes.length === 0 && allAnnexes.length > 0) {
           debugLogger.info("4차 검색: 정확한 법령명 매칭 없음, 모법 전체 결과 반환", {
             parentName,
@@ -315,7 +321,7 @@ export async function GET(request: Request) {
       }
     }
 
-    debugLogger.success("별표 목록 조회 완료", { query, count: annexes.length })
+    debugLogger.success("별표 목록 조회 완료", { query: normalizedQuery, count: annexes.length })
 
     return NextResponse.json({
       success: true,

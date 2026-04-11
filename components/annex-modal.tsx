@@ -93,6 +93,10 @@ function extractAnnexSection(markdown: string, targetNum: string): string {
   return match ? match[1].trim() : markdown
 }
 
+/** 가운뎃점 정규화 (·ㆍ･・ → ㆍ) — 법제처 API와 사용자 입력 차이 대응 */
+const MIDDLE_DOT_RE = /[·\u00B7\u318D\u30FB\uFF65]/g
+const normDots = (s: string) => s.replace(MIDDLE_DOT_RE, 'ㆍ')
+
 export function AnnexModal({
   isOpen,
   onClose,
@@ -195,7 +199,7 @@ export function AnnexModal({
 
       // 3a. lawName이 정확히 일치하는 별표 필터링
       const sameLawAnnexes = annexes.filter((a) =>
-        a.lawName === lawName || a.lawName.includes(lawName) || lawName.includes(a.lawName)
+        normDots(a.lawName) === normDots(lawName) || normDots(a.lawName).includes(normDots(lawName)) || normDots(lawName).includes(normDots(a.lawName))
       )
       const searchPool = sameLawAnnexes.length > 0 ? sameLawAnnexes : annexes
 

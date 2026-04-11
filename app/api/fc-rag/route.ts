@@ -2,19 +2,16 @@
  * FC-RAG API endpoint with SSE streaming.
  *
  * ── LLM 구성 ──
- * Primary : Claude CLI (미니PC subprocess 또는 Bridge 프록시)
- * Fallback: Gemini Flash — Claude 불능 시
- *
- * ── 환경 분기 ──
- * 미니PC (로컬): executeClaudeRAGStream → claude.exe subprocess 직접
- * Vercel (배포): fetchFromOpenClaw → CF Worker → Tunnel → Bridge → Gateway → Claude CLI
+ * Primary : Hermes Agent API (GPT-5.4)
+ *   로컬: localhost:8642 직접 호출
+ *   Vercel: CF Worker → Quick Tunnel → Hermes API (동일 경로)
+ * Fallback: Gemini Flash — Hermes 불능 시
  */
 
 import { NextRequest } from "next/server"
 import { debugLogger } from "@/lib/debug-logger"
 import { verifyAllCitations, type Citation, type VerifiedCitation } from "@/lib/citation-verifier"
 import { executeClaudeRAGStream, executeGeminiRAGStream, type FCRAGCitation } from "@/lib/fc-rag/engine"
-import { fetchFromOpenClaw, isOpenClawHealthy } from "@/lib/openclaw-client"
 import {
   getUsageHeaders,
   getUsageWarningMessage,
@@ -141,101 +138,67 @@ export async function POST(request: NextRequest) {
 
       try {
         let handled = false
-        let source: 'claude' | 'gemini' = 'gemini'
+        let source: 'hermes' | 'gemini' = 'gemini'
 
-        // ── Claude Primary (환경별 분기) ──
-        // 미니PC: CLI subprocess 직접 / Vercel: Bridge 프록시 (CF Worker → Tunnel → 미니PC)
+        // ── Hermes Primary (통일 경로) ──
+        // 로컬: localhost:8642 직접 / Vercel: HERMES_API_URL(CF Worker) 경유
         try {
-          traceLogger.addEvent(traceId, 'claude_start', {})
+          traceLogger.addEvent(traceId, 'hermes_start', {})
           sendAndLog({ type: "status", message: "AI 엔진 연결 중...", progress: 2 })
 
           let lastAnswerCitations: FCRAGCitation[] = []
 
-          if (process.env.VERCEL) {
-            // ── Vercel: Bridge 프록시 경유 ──
-            const bridgeHealthy = await isOpenClawHealthy()
-            if (!bridgeHealthy) throw new Error('Bridge unavailable')
+          const isTransient = (msg: string) => /타임아웃|timeout|ECONNRESET|EPIPE|ETIMEDOUT/i.test(msg)
+          let cliSuccess = false
 
-            traceLogger.addEvent(traceId, 'bridge_start', {})
-
-            const wrappedSend = (data: unknown) => {
-              const evt = data as Record<string, unknown>
-              if (evt?.type === 'answer') {
-                const answerData = evt.data as Record<string, unknown> | undefined
-                lastAnswerCitations = (answerData?.citations || []) as FCRAGCitation[]
-                if (!userApiKey && answerData?.answer) {
-                  recordAITokens(clientIP, String(answerData.answer).length).then(usageStats => {
-                    const warningMessage = getUsageWarningMessage(usageStats)
-                    if (warningMessage) {
-                      sendAndLog({ type: "status", message: warningMessage, progress: 99 })
-                    }
-                  }).catch(() => {})
-                }
-              }
-              sendAndLog(data)
+          for (let attempt = 0; attempt < 2 && !cliSuccess; attempt++) {
+            if (attempt > 0) {
+              sendAndLog({ type: "status", message: "Hermes 타임아웃 — 재시도 중...", progress: 3 })
+              traceLogger.addEvent(traceId, 'hermes_retry', { attempt })
             }
 
-            const success = await fetchFromOpenClaw(query, wrappedSend, {
-              abortSignal: combinedSignal,
+            let claudeHadError = false
+            let errorMessage = ''
+
+            for await (const event of executeClaudeRAGStream(query, {
+              signal: combinedSignal,
               conversationId,
               preEvidence,
-            })
-
-            if (!success) throw new Error('Bridge returned failure')
-          } else {
-            // ── 미니PC: CLI subprocess 직접 (transient error 시 1회 재시도) ──
-            const isTransient = (msg: string) => /타임아웃|timeout|ECONNRESET|EPIPE|ETIMEDOUT/i.test(msg)
-            let cliSuccess = false
-
-            for (let attempt = 0; attempt < 2 && !cliSuccess; attempt++) {
-              if (attempt > 0) {
-                sendAndLog({ type: "status", message: "Claude 타임아웃 — 재시도 중...", progress: 3 })
-                traceLogger.addEvent(traceId, 'claude_retry', { attempt })
+            })) {
+              if (event.type === "error") {
+                claudeHadError = true
+                errorMessage = event.message
+                traceLogger.addEvent(traceId, 'hermes_internal_error', { message: event.message })
+                continue
               }
+              if (claudeHadError && event.type === "answer") continue
 
-              let claudeHadError = false
-              let errorMessage = ''
-
-              for await (const event of executeClaudeRAGStream(query, {
-                signal: combinedSignal,
-                conversationId,
-                preEvidence,
-              })) {
-                if (event.type === "error") {
-                  claudeHadError = true
-                  errorMessage = event.message
-                  traceLogger.addEvent(traceId, 'claude_internal_error', { message: event.message })
-                  continue
-                }
-                if (claudeHadError && event.type === "answer") continue
-
-                if (event.type === "answer") {
-                  lastAnswerCitations = event.data.citations || []
-                  if (!userApiKey) {
-                    const usageStats = await recordAITokens(clientIP, event.data.answer.length)
-                    const warningMessage = getUsageWarningMessage(usageStats)
-                    if (warningMessage) {
-                      const warnings = [...(event.data.warnings || []), warningMessage]
-                      sendAndLog({ ...event, data: { ...event.data, warnings } })
-                      continue
-                    }
+              if (event.type === "answer") {
+                lastAnswerCitations = event.data.citations || []
+                if (!userApiKey) {
+                  const usageStats = await recordAITokens(clientIP, event.data.answer.length)
+                  const warningMessage = getUsageWarningMessage(usageStats)
+                  if (warningMessage) {
+                    const warnings = [...(event.data.warnings || []), warningMessage]
+                    sendAndLog({ ...event, data: { ...event.data, warnings } })
+                    continue
                   }
                 }
-
-                sendAndLog(event)
               }
 
-              if (!claudeHadError) {
-                cliSuccess = true
-              } else if (attempt === 0 && isTransient(errorMessage)) {
-                continue // 1회 재시도
-              } else {
-                throw new Error('Claude internal error, falling back to Gemini')
-              }
+              sendAndLog(event)
             }
 
-            if (!cliSuccess) throw new Error('Claude CLI failed after retries')
+            if (!claudeHadError) {
+              cliSuccess = true
+            } else if (attempt === 0 && isTransient(errorMessage)) {
+              continue // 1회 재시도
+            } else {
+              throw new Error('Hermes internal error, falling back to Gemini')
+            }
           }
+
+          if (!cliSuccess) throw new Error('Hermes API failed after retries')
 
           // Citation 검증 (양쪽 경로 공통)
           if (lastAnswerCitations.length > 0) {
@@ -252,11 +215,11 @@ export async function POST(request: NextRequest) {
           }
 
           handled = true
-          source = 'claude'
-          traceLogger.completeTrace(traceId, 'openclaw')
-        } catch (claudeError) {
-          traceLogger.addEvent(traceId, 'claude_failed', {
-            message: claudeError instanceof Error ? claudeError.message : 'unknown',
+          source = 'hermes'
+          traceLogger.completeTrace(traceId, 'hermes')
+        } catch (hermesError) {
+          traceLogger.addEvent(traceId, 'hermes_failed', {
+            message: hermesError instanceof Error ? hermesError.message : 'unknown',
             fallback: 'gemini',
           })
         }
@@ -294,7 +257,7 @@ export async function POST(request: NextRequest) {
             sendAndLog(event)
           }
 
-          // 안전장치: Claude+Gemini 모두 answer를 보내지 못한 경우
+          // 안전장치: Hermes+Gemini 모두 answer를 보내지 못한 경우
           if (!geminiAnswerSent) {
             sendAndLog({
               type: "answer",
@@ -304,7 +267,7 @@ export async function POST(request: NextRequest) {
                 confidenceLevel: "low",
                 complexity: "simple",
                 queryType: "application",
-                warnings: ["Claude 및 Gemini 엔진 모두 응답 실패"],
+                warnings: ["Hermes 및 Gemini 엔진 모두 응답 실패"],
               },
             })
           }
@@ -326,10 +289,7 @@ export async function POST(request: NextRequest) {
           traceLogger.completeTrace(traceId, 'gemini')
         }
 
-        // Vercel+Claude 경로: Bridge(openclaw-client.ts)가 이미 source:'openclaw' 전송 → 중복 방지
-        if (!(process.env.VERCEL && source === 'claude')) {
-          sendAndLog({ type: 'source', source })
-        }
+        sendAndLog({ type: 'source', source })
 
         // ── 질의 로그 기록 ──
         appendQueryLog({
@@ -337,6 +297,7 @@ export async function POST(request: NextRequest) {
           traceId,
           query,
           source,
+          model: source === 'hermes' ? 'gpt-5.4' : 'gemini-flash',
           env: process.env.VERCEL ? 'vercel' : 'local',
           complexity: logComplexity,
           queryType: logQueryType,
@@ -360,6 +321,7 @@ export async function POST(request: NextRequest) {
           traceId,
           query,
           source: 'gemini',
+          model: 'error',
           env: process.env.VERCEL ? 'vercel' : 'local',
           complexity: logComplexity,
           queryType: logQueryType,

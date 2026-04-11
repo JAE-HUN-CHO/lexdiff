@@ -126,7 +126,7 @@ export function DelegationGapModal({ isOpen, onClose, meta }: DelegationGapModal
       const ttRes = await fetch(`/api/three-tier?${ttParams}`, { signal })
       if (!ttRes.ok) throw new Error('위임법령 데이터 조회 실패')
       const ttData = await ttRes.json()
-      const threeTierArticles: ThreeTierArticle[] = ttData.articles || []
+      const threeTierArticles: ThreeTierArticle[] = ttData.delegation?.articles || []
 
       if (signal.aborted) return
 

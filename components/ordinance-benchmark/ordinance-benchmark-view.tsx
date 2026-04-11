@@ -310,7 +310,7 @@ export function OrdinanceBenchmarkView({ initialKeyword, onBack, onHomeClick }: 
       </header>
 
       <div className="flex-1">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
           {/* 타이틀 */}
           <div className="pt-2">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-brand-navy dark:text-foreground flex items-center gap-2 sm:gap-3" style={serifStyle}>
@@ -600,7 +600,7 @@ export function OrdinanceBenchmarkView({ initialKeyword, onBack, onHomeClick }: 
                       <Button variant="ghost" size="sm" className="h-7 px-3 text-xs"
                         onClick={() => { setAiAnalysis(null); setAiError(null) }}>닫기</Button>
                     </div>
-                    <div className="bg-content-bg rounded-lg p-3 sm:p-5 border border-gray-100 dark:border-gray-800">
+                    <div className="bg-content-bg rounded-lg p-3 sm:p-5 border border-gray-100 dark:border-gray-800 [&_table]:!table-fixed [&_tr:nth-child(even)_td]:bg-muted/30">
                       <LegalMarkdownRenderer
                         content={aiAnalysis.comparisonTable}
                         disabledLink

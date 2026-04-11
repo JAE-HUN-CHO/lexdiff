@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 
   try {
     const params = new URLSearchParams({
-      target: "eflaw",
+      target: "law",
       OC,
       type: "JSON",
     })

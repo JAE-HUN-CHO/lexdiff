@@ -69,7 +69,7 @@ export function ThRenderer({ children, ...props }: ThProps) {
 
 export function TdRenderer({ children }: TdProps) {
   return (
-    <td className="px-2 sm:px-4 py-2 sm:py-2.5 border-b border-border/50 text-foreground/90 align-top leading-relaxed break-keep" style={{ fontSize: 'inherit' }}>
+    <td className="px-2 sm:px-4 py-2 sm:py-2.5 border-b border-border/50 text-foreground/90 align-top leading-relaxed break-keep" style={{ fontSize: 'inherit', overflowWrap: 'break-word' }}>
       {children}
     </td>
   )
