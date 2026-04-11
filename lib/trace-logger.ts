@@ -7,11 +7,11 @@
 
 import { appendFileSync, readFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
-import { homedir } from 'os'
 
 const TRACE_LOG_DIR = join(process.cwd(), 'logs')
 const TRACE_LOG_FILE = join(TRACE_LOG_DIR, 'fc-rag-traces.jsonl')
-const HERMES_TRACE_FILE = join(homedir(), '.hermes', 'logs', 'fc-rag-traces.jsonl')
+const HERMES_TRACE_DIR = process.env.HOME ? join(process.env.HOME, '.hermes', 'logs') : null
+const HERMES_TRACE_FILE = HERMES_TRACE_DIR ? join(HERMES_TRACE_DIR, 'fc-rag-traces.jsonl') : null
 
 export interface TraceEvent {
   ts: string // ISO timestamp
@@ -116,11 +116,12 @@ class TraceLogger {
       if (!existsSync(TRACE_LOG_DIR)) mkdirSync(TRACE_LOG_DIR, { recursive: true })
       appendFileSync(TRACE_LOG_FILE, line)
     } catch { /* 로깅 실패 무시 */ }
-    try {
-      const hermesDir = join(homedir(), '.hermes', 'logs')
-      if (!existsSync(hermesDir)) mkdirSync(hermesDir, { recursive: true })
-      appendFileSync(HERMES_TRACE_FILE, line)
-    } catch { /* Hermes 미설치 시 무시 */ }
+    if (HERMES_TRACE_DIR && HERMES_TRACE_FILE) {
+      try {
+        if (!existsSync(HERMES_TRACE_DIR)) mkdirSync(HERMES_TRACE_DIR, { recursive: true })
+        appendFileSync(HERMES_TRACE_FILE, line)
+      } catch { /* Hermes 미설치 시 무시 */ }
+    }
   }
 
   getTrace(traceId: string): Trace | undefined {

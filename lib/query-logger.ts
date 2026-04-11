@@ -8,14 +8,13 @@
 
 import { appendFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
-import { homedir } from 'os'
 
 const LOG_DIR = join(process.cwd(), 'logs')
 const LOG_FILE = join(LOG_DIR, 'fc-rag-queries.jsonl')
 
-// Hermes 대시보드 연동: ~/.hermes/logs/ 에 동일 로그 기록
-const HERMES_LOG_DIR = join(homedir(), '.hermes', 'logs')
-const HERMES_LOG_FILE = join(HERMES_LOG_DIR, 'fc-rag-queries.jsonl')
+// Hermes 대시보드 연동: ~/.hermes/logs/ 에 동일 로그 기록 (로컬 전용)
+const HERMES_LOG_DIR = process.env.HOME ? join(process.env.HOME, '.hermes', 'logs') : null
+const HERMES_LOG_FILE = HERMES_LOG_DIR ? join(HERMES_LOG_DIR, 'fc-rag-queries.jsonl') : null
 
 export interface QueryLogEntry {
   ts: string
@@ -42,9 +41,11 @@ export function appendQueryLog(entry: QueryLogEntry): void {
     if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true })
     appendFileSync(LOG_FILE, line)
   } catch { /* 로깅 실패는 무시 */ }
-  // Hermes 대시보드용 로그
-  try {
-    if (!existsSync(HERMES_LOG_DIR)) mkdirSync(HERMES_LOG_DIR, { recursive: true })
-    appendFileSync(HERMES_LOG_FILE, line)
-  } catch { /* Hermes 미설치 시 무시 */ }
+  // Hermes 대시보드용 로그 (로컬 전용)
+  if (HERMES_LOG_DIR && HERMES_LOG_FILE) {
+    try {
+      if (!existsSync(HERMES_LOG_DIR)) mkdirSync(HERMES_LOG_DIR, { recursive: true })
+      appendFileSync(HERMES_LOG_FILE, line)
+    } catch { /* Hermes 미설치 시 무시 */ }
+  }
 }
