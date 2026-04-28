@@ -205,7 +205,12 @@ async function* forceLastTurnAnswer(opts: ForceLastTurnOptions): AsyncGenerator<
       () => ai.models.generateContentStream({
         model: MODEL,
         contents: messages,
-        config: { systemInstruction: systemPrompt, temperature: 0, maxOutputTokens: MAX_TOKENS[complexity] },
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0,
+          maxOutputTokens: MAX_TOKENS[complexity],
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       }),
       'Gemini forceLastTurn',
     ),
@@ -562,6 +567,10 @@ export async function* executeGeminiRAGStream(
               tools: [{ functionDeclarations: activeDeclarations }],
               temperature: 0,
               maxOutputTokens: MAX_TOKENS[complexity],
+              // gemini-3-* 는 thinking 이 default — function calling 루프에서
+              // 사고 토큰이 출력 토큰을 잠식해 텍스트 답변이 안 나오고 timeout 까지
+              // 도달하는 사고 발생 (45s timeout, answerLength:59 generic fallback).
+              thinkingConfig: { thinkingBudget: 0 },
             },
           }),
           `Gemini turn${turnCount}`,
